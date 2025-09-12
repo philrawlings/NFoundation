@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NFoundation.DateTimeUtiliti
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NFoundation.Templates.ConsoleApp", "NFoundation.Templates.ConsoleApp\NFoundation.Templates.ConsoleApp.csproj", "{B70D06F8-9268-C9C2-FB65-5DB881990ABE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NFoundation.Templates.ConsoleApp.Pack", "NFoundation.Templates.ConsoleApp.Pack\NFoundation.Templates.ConsoleApp.Pack.csproj", "{F8920199-60DD-4F86-8B85-CDA992DF4A8A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{B70D06F8-9268-C9C2-FB65-5DB881990ABE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B70D06F8-9268-C9C2-FB65-5DB881990ABE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B70D06F8-9268-C9C2-FB65-5DB881990ABE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8920199-60DD-4F86-8B85-CDA992DF4A8A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8920199-60DD-4F86-8B85-CDA992DF4A8A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8920199-60DD-4F86-8B85-CDA992DF4A8A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8920199-60DD-4F86-8B85-CDA992DF4A8A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

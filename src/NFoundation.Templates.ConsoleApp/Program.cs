@@ -30,6 +30,7 @@ builder.Logging.AddDebug();
 var host = builder.Build();
 
 var logger = host.Services.GetRequiredService<ILogger<Program>>();
+
 try
 {
     await host.RunAsync();

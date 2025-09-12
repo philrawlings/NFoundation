@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageVersion>1.0.0</PackageVersion>
+    <PackageId>NFoundation.Templates.ConsoleApp</PackageId>
+    <Title>NFoundation Console App Template</Title>
+    <Authors>NFoundation</Authors>
+    <Description>Console App Template for NFoundation projects</Description>
+    <PackageTags>Console;App;Template;NFoundation</PackageTags>
+    <PackageProjectUrl>https://github.com/philrawlings/NFoundation</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ContentTargetFolders>content</ContentTargetFolders>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageOutputPath>..\..\builds</PackageOutputPath>
+    
+    <!-- Disable compilation -->
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Include all template files in package but not in project -->
+    <None Include="..\NFoundation.Templates.ConsoleApp\**\*" 
+          Exclude="..\NFoundation.Templates.ConsoleApp\bin\**;..\NFoundation.Templates.ConsoleApp\obj\**;..\NFoundation.Templates.ConsoleApp\.vs\**;..\NFoundation.Templates.ConsoleApp\*.user"
+          Pack="true"
+          PackagePath="content\"
+          Visible="false" />
+    
+    <!-- Include README in package root -->
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

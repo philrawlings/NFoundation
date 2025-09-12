@@ -9,13 +9,14 @@
     <license type="expression">MIT</license>
     <projectUrl>https://github.com/philrawlings/NFoundation</projectUrl>
     <description>Console App Template</description>
+    <readme>README.md</readme>
     <tags>Console App Template</tags>  
     <packageTypes>
       <packageType name="Template" />
     </packageTypes>
   </metadata>
   <files>
-    <file src="*\**" target="\" exclude="obj\**\*.*"/>
-    <file src="*\**" target="\" exclude="bin\**\*.*"/>
-</files>
+    <file src="..\..\src\NFoundation.Templates.ConsoleApp\**\*" target="content" exclude="**\bin\**;**\obj\**;**\.vs\**;**\*.user" />
+    <file src="TEMPLATE_README.md" target="README.md" />
+  </files>
 </package>
