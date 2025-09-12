@@ -1,4 +1,4 @@
-﻿namespace NFoundation
+﻿namespace NFoundation.Temporal
 {
     public class DateTimeRange : IEquatable<DateTimeRange>, ICloneable
     {

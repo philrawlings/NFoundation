@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using NFoundation.Temporal;
 
-namespace NFoundation.Test
+namespace NFoundation.Test.Temporal
 {
     public class DateTimeExtensionsTests
     {

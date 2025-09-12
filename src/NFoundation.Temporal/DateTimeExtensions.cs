@@ -1,6 +1,6 @@
 ﻿using NodaTime;
 
-namespace NFoundation
+namespace NFoundation.Temporal
 {
     public static class DateTimeExtensions
     {

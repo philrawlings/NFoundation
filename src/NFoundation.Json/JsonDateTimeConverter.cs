@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace NFoundation
+namespace NFoundation.Json
 {
     public class JsonDateTimeConverter : JsonConverter<DateTime>
     {

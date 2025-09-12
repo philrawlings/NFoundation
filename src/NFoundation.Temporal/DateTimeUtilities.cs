@@ -2,7 +2,7 @@
 using NodaTime.TimeZones;
 using System.Globalization;
 
-namespace NFoundation
+namespace NFoundation.Temporal
 {
     public static class DateTimeUtilities
     {

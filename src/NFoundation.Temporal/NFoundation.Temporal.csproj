@@ -9,8 +9,10 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageOutputPath>..\..\builds</PackageOutputPath>
     <IncludeSource>true</IncludeSource> <!-- Include source code in the package -->
     <IncludeSymbols>true</IncludeSymbols> <!-- Include symbols for debugging -->
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <ItemGroup>

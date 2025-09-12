@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\NFoundation.DateTimeUtilities\NFoundation.DateTimeUtilities.csproj" />
+    <ProjectReference Include="..\NFoundation.Temporal\NFoundation.Temporal.csproj" />
   </ItemGroup>
 
   <ItemGroup>
