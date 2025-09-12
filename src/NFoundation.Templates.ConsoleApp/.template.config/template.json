@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "NFoundation",
+  "classifications": [ "Console" ],
+  "identity": "NFoundation.Templates.ConsoleApp",
+  "name": "NFoundation Console App",
+  "shortName": "nfconsole",
+  "sourceName": "NFoundation.Templates.ConsoleApp",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  }
+}

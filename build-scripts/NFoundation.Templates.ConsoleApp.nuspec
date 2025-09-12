@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>NFoundation.Templates.ConsoleApp</id>
+    <version>1.0.0</version>
+    <authors>NFoundation</authors>
+    <owners>NFoundation</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/philrawlings/NFoundation</projectUrl>
+    <description>Console App Template</description>
+    <tags>Console App Template</tags>  
+    <packageTypes>
+      <packageType name="Template" />
+    </packageTypes>
+  </metadata>
+  <files>
+    <file src="*\**" target="\" exclude="obj\**\*.*"/>
+    <file src="*\**" target="\" exclude="bin\**\*.*"/>
+</files>
+</package>
