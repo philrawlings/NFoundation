@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photino for .NET Demo - Typed Messaging</title>
+    <link rel="stylesheet" href="css/main.css" />
+    <style>
+        .demo-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .demo-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .button-group {
+            margin: 10px 0;
+        }
+        .button-group button {
+            margin: 5px;
+            padding: 8px 15px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            background: #e8f5e8;
+            border-left: 4px solid #4caf50;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .error {
+            background: #ffeaea;
+            border-left-color: #f44336;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        .input-group label {
+            display: inline-block;
+            width: 100px;
+            font-weight: bold;
+        }
+        .input-group input, .input-group select {
+            width: 120px;
+            padding: 4px;
+            margin: 2px;
+        }
+        #log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f0f0f0;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="text-center">Photino Typed Messaging Demo</h1>
+
+    <p class="text-center">
+        This demo showcases the new typed messaging system between JavaScript and C#.
+        Try the different examples below to see one-way messages and request-response patterns.
+    </p>
+
+    <!-- One-way Messages Section -->
+    <div class="demo-section">
+        <h3>📤 One-way Messages (Fire and Forget)</h3>
+        <div class="button-group">
+            <button onclick="sendButtonClick('submit')">Button Click: Submit</button>
+            <button onclick="sendButtonClick('cancel')">Button Click: Cancel</button>
+        </div>
+        <p><em>These messages are sent to C# but don't expect a response.</em></p>
+    </div>
+
+    <!-- Request-Response Section -->
+    <div class="demo-section">
+        <h3>🔄 Request-Response Messages</h3>
+
+        <div>
+            <h4>User Data Lookup</h4>
+            <div class="input-group">
+                <label>User ID:</label>
+                <input type="number" id="userId" value="1" min="1" max="10">
+                <button onclick="getUser()">Get User</button>
+            </div>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+
+    <!-- Event Log -->
+    <div class="demo-section">
+        <h3>📋 Event Log</h3>
+        <button onclick="clearLog()">Clear Log</button>
+        <div id="log"></div>
+    </div>
+
+    <!-- Load PhotinoWindow library first -->
+    <script src="js/photinoWindow.js"></script>
+
+    <!-- Custom scheme handler -->
+    <script src="app://dynamic.js"></script>
+
+    <script>
+        // Initialize with debug mode
+        PhotinoWindow.initialize({ debug: true });
+
+
+        // Utility functions
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        function showResult(text, isError = false) {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = isError ? 'result error' : 'result';
+            resultDiv.textContent = text;
+            resultsDiv.appendChild(resultDiv);
+
+            // Auto-remove after 10 seconds
+            setTimeout(() => {
+                if (resultDiv.parentNode) {
+                    resultDiv.parentNode.removeChild(resultDiv);
+                }
+            }, 10000);
+        }
+
+        // One-way message functions
+        function sendButtonClick(buttonId) {
+            PhotinoWindow.sendMessage('button-clicked', buttonId);
+            log(`🖱️ Sent button click: ${buttonId}`);
+        }
+
+        // Request-response functions
+        async function getUser() {
+            try {
+                const userId = parseInt(document.getElementById('userId').value);
+
+                log(`👤 Requesting user data for ID: ${userId}`);
+
+                const user = await PhotinoWindow.sendRequest('get-user', { userId: userId });
+
+                const resultText = `User ${userId}: ${user.name} (${user.email}, age ${user.age})`;
+                showResult(resultText);
+                log(`✅ Got user data: ${user.name}`);
+
+            } catch (error) {
+                showResult(`User lookup error: ${error.message}`, true);
+                log(`❌ User lookup error: ${error.message}`);
+            }
+        }
+
+
+
+    </script>
+</body>
+</html>
