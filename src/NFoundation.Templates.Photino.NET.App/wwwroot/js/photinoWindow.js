@@ -22,7 +22,7 @@
          */
         initialize(options = {}) {
             if (this._initialized) {
-                console.warn('PhotinoWindow2 already initialized');
+                console.warn('PhotinoWindow already initialized');
                 return this;
             }
 
@@ -264,14 +264,5 @@
 
     // Expose PhotinoWindow globally
     window.PhotinoWindow = PhotinoWindow;
-
-    // Auto-initialize if document is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            PhotinoWindow.initialize();
-        });
-    } else {
-        PhotinoWindow.initialize();
-    }
 
 })(window);
