@@ -649,12 +649,12 @@ namespace NFoundation.Photino.NET.Extensions
         /// </summary>
         /// <param name="window">The PhotinoWindow instance</param>
         /// <param name="scheme">The custom scheme name (default: "photino")</param>
-        /// <param name="enableDebugLogging">Enable debug logging in PhotinoWindow (default: false)</param>
-        /// <param name="enableConsoleLogging">Enable console logging bridge to .NET (default: true)</param>
-        public static PhotinoWindow RegisterPhotinoScript(this PhotinoWindow window, string scheme = "photino", bool enableDebugLogging = false, bool enableConsoleLogging = true)
+        /// <param name="enablePhotinoDebugLogging">Enable debug logging for the Photino JavaScript framework itself (default: false)</param>
+        /// <param name="forwardConsoleMessagesToLogger">Forward JavaScript console messages to the .NET logger (default: true)</param>
+        public static PhotinoWindow RegisterPhotinoScript(this PhotinoWindow window, string scheme = "photino", bool enablePhotinoDebugLogging = false, bool forwardConsoleMessagesToLogger = true)
         {
             // Set up console logging bridge if enabled
-            if (enableConsoleLogging)
+            if (forwardConsoleMessagesToLogger)
             {
                 SetupConsoleLogging(window);
             }
@@ -667,7 +667,7 @@ namespace NFoundation.Photino.NET.Extensions
                     var script = GetPhotinoWindowScript();
 
                     // Build the initialization options JSON
-                    var initOptions = $"{{ enableDebugLogging: {enableDebugLogging.ToString().ToLower()}, enableConsoleLogging: {enableConsoleLogging.ToString().ToLower()} }}";
+                    var initOptions = $"{{ enablePhotinoDebugLogging: {enablePhotinoDebugLogging.ToString().ToLower()}, forwardConsoleMessagesToLogger: {forwardConsoleMessagesToLogger.ToString().ToLower()} }}";
 
                     // Replace the placeholder with actual options
                     script = script.Replace(

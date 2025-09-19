@@ -75,7 +75,7 @@ var window = new PhotinoWindow()
     })
 
     // Enable automatic script injection with console logging
-    .RegisterPhotinoScript(enableDebugLogging: true, enableConsoleLogging: true)
+    .RegisterPhotinoScript(enablePhotinoDebugLogging: true, forwardConsoleMessagesToLogger: true)
 
     // Load your HTML
     .Load("wwwroot/index.html");
@@ -203,15 +203,19 @@ async function validateForm(formData) {
 
 The library includes an embedded JavaScript client (`photinoWindow.js`) that's automatically served via a custom scheme handler.
 
+**Configuration Options:**
+- **`enablePhotinoDebugLogging`**: When true, enables debug logging from the Photino JavaScript framework itself in the browser console. This is useful for debugging message passing issues between JavaScript and .NET.
+- **`forwardConsoleMessagesToLogger`**: When true (default), automatically forwards JavaScript console.log/warn/error messages to your .NET logger, allowing you to capture client-side logging in your server-side logs.
+
 ```csharp
 // Basic setup with auto-initialization
 window.RegisterPhotinoScript();
 
 // Advanced setup with options
 window.RegisterPhotinoScript(
-    scheme: "photino",                    // Custom scheme name (default: "photino")
-    enableDebugLogging: true,             // Enable debug output (default: false)
-    enableConsoleLogging: true            // Enable console bridge (default: true)
+    scheme: "photino",                           // Custom scheme name (default: "photino")
+    enablePhotinoDebugLogging: true,             // Enable debug output for the Photino JavaScript framework (default: false)
+    forwardConsoleMessagesToLogger: true         // Forward JS console messages to .NET logger (default: true)
 );
 ```
 
@@ -258,7 +262,7 @@ Forward JavaScript console output to your .NET logger for unified logging.
 
 ```csharp
 // Enable console logging bridge (enabled by default)
-window.RegisterPhotinoScript(enableConsoleLogging: true);
+window.RegisterPhotinoScript(forwardConsoleMessagesToLogger: true);
 ```
 
 #### Usage
@@ -352,7 +356,7 @@ internal partial class MyJsonContext : JsonSerializerContext
 | `RegisterRequestHandler<TReq, TRes>(string, Func<TReq, Task<TRes>>)` | Register async request handler |
 | `UnregisterRequestHandler(string)` | Remove request handler |
 | `SendMessage<T>(string, T)` | Send one-way message to JavaScript |
-| `RegisterPhotinoScript(string, bool, bool)` | Enable script injection with options |
+| `RegisterPhotinoScript(string, bool, bool)` | Enable script injection with options (scheme, enablePhotinoDebugLogging, forwardConsoleMessagesToLogger) |
 | `ClearHandlers()` | Remove all registered handlers |
 
 ### Static Classes

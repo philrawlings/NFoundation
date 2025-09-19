@@ -13,15 +13,15 @@
         _pendingRequests: new Map(),
         _requestIdCounter: 0,
         _initialized: false,
-        _enableDebugLogging: false,
-        _enableConsoleLogging: false,
+        _enablePhotinoDebugLogging: false,
+        _forwardConsoleMessagesToLogger: false,
         _originalConsole: null,
 
         /**
          * Initialize the message handling system
          * @param {Object} options - Configuration options
-         * @param {boolean} options.enableDebugLogging - Enable debug logging
-         * @param {boolean} options.enableConsoleLogging - Enable console logging bridge to .NET
+         * @param {boolean} options.enablePhotinoDebugLogging - Enable debug logging for the Photino JavaScript framework
+         * @param {boolean} options.forwardConsoleMessagesToLogger - Forward JavaScript console messages to the .NET logger
          */
         initialize(options = {}) {
             if (this._initialized) {
@@ -29,11 +29,11 @@
                 return this;
             }
 
-            this._enableDebugLogging = options.enableDebugLogging || false;
-            this._enableConsoleLogging = options.enableConsoleLogging || false;
+            this._enablePhotinoDebugLogging = options.enablePhotinoDebugLogging || false;
+            this._forwardConsoleMessagesToLogger = options.forwardConsoleMessagesToLogger || false;
 
             // Set up console logging bridge if enabled
-            if (this._enableConsoleLogging) {
+            if (this._forwardConsoleMessagesToLogger) {
                 this._setupConsoleLogging();
             }
 
@@ -242,7 +242,7 @@
          * @private
          */
         _log(...args) {
-            if (this._enableDebugLogging) {
+            if (this._enablePhotinoDebugLogging) {
                 // Use original console.log to avoid infinite recursion
                 const originalLog = this._originalConsole ? this._originalConsole.log : console.log;
                 originalLog('[PhotinoWindow]', ...args);
