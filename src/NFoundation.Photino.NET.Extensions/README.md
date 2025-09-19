@@ -12,7 +12,7 @@ NFoundation.Photino.NET.Extensions enhances the Photino.NET framework with a com
 - 📡 **Request-Response Patterns** - Async request handling with automatic response routing
 - 📜 **Automatic Script Injection** - Embedded JavaScript library with auto-initialization
 - 🪵 **Console Logging Bridge** - Forward JavaScript console messages to .NET ILogger
-- 🔍 **Enhanced Photino Logging** - Routes Photino log messages to ILogger instance, rather than the Console
+- 🔍 **Enhanced Photino Logging** - Routes Photino log messages to ILogger instance, rather than the Console (not supported for AOT compiled apps)
 
 ## Disclaimer
 
@@ -53,7 +53,7 @@ using NFoundation.Photino.NET.Extensions;
 using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
 var logger = loggerFactory.CreateLogger("MainWindow");
 
-// Initialize Photino log patcher (optional but recommended)
+// Initialize Photino log patcher (optional but recommended - does not work for AOT compiled apps)
 PhotinoWindowLogPatcher.Initialize();
 
 var window = new PhotinoWindow()

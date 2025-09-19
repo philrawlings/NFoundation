@@ -6,6 +6,25 @@
     <Platforms>AnyCPU</Platforms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <!-- Enable source generators and trim warnings -->
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>IL2026;IL2027;IL2072;IL2075;IL2077</WarningsNotAsErrors>
+  </PropertyGroup>
+
+  <!-- AOT and Trimming Configuration (only for publish) -->
+  <PropertyGroup Condition="'$(PublishAot)' == 'true'">
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!-- Optimize for size and performance -->
+    <OptimizationPreference>Size</OptimizationPreference>
+    <IlcOptimizationPreference>Size</IlcOptimizationPreference>
+
+    <!-- Suppress AOT warnings for reflection-based libraries -->
+    <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
   </PropertyGroup>
 
   <ItemGroup>

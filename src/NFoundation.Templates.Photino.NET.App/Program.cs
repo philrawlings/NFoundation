@@ -2,9 +2,12 @@ using Microsoft.Extensions.Logging;
 using Photino.NET;
 using System.Drawing;
 using System.Text.Json.Serialization;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NFoundation.Photino.NET.Extensions.Sample
 {
+    // Console window will be displayed when running to show logs
+    // Change <OutputType> to "WinExe" in csproj to hide it (works on Linux/MacOS too)
     class Program
     {
         [STAThread]
@@ -18,11 +21,19 @@ namespace NFoundation.Photino.NET.Extensions.Sample
                     .SetMinimumLevel(LogLevel.Debug);
             });
 
-            // Initialize Photino log patcher
-            PhotinoWindowLogPatcher.Initialize();
-
             var logger = loggerFactory.CreateLogger<Program>();
             var windowLogger = loggerFactory.CreateLogger("MainWindow");
+
+            // Initialize Photino log patcher (optional but recommended)
+            try
+            {
+                PhotinoWindowLogPatcher.Initialize();
+                logger.LogInformation("Photino log patcher initialized successfully");
+            }
+            catch
+            {
+                logger.LogWarning("Failed to initialize Photino log patcher (expected in AOT scenarios)");
+            }
 
             // Window title declared here for visibility
             string windowTitle = "PhotinoWindow Demo with Typed Messaging";
@@ -104,6 +115,8 @@ namespace NFoundation.Photino.NET.Extensions.Sample
     // JSON source generator context for AOT/trimming support
     [JsonSerializable(typeof(UserDataRequest))]
     [JsonSerializable(typeof(UserDataResponse))]
+    [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode",
+        Justification = "JSON source generator context ensures type safety")]
     internal partial class MyJsonContext : JsonSerializerContext
     {
     }

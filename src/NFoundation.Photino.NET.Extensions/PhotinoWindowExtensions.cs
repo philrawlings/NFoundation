@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using NFoundation.Json;
 using System.Reflection;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NFoundation.Photino.NET.Extensions
 {
@@ -391,9 +392,12 @@ namespace NFoundation.Photino.NET.Extensions
                 {
                     await task;
 
-                    // Get the result using reflection
-                    var resultProperty = task.GetType().GetProperty("Result");
-                    response.Payload = resultProperty?.GetValue(task);
+                    // Get the result more safely for AOT scenarios
+                    var result = GetTaskResult(task, data.Logger);
+                    response.Payload = result;
+
+                    data.Logger?.LogDebug("Task result type: {ResultType}, value: {Result}",
+                        result?.GetType()?.Name ?? "null", result);
                 }
 
                 data.Logger?.LogDebug("Successfully handled request of type: {Type}", envelope.Type);
@@ -409,8 +413,153 @@ namespace NFoundation.Photino.NET.Extensions
 
         private static void SendResponse(PhotinoWindow window, MessageEnvelope response, JsonSerializerOptions options)
         {
-            var json = JsonSerializer.Serialize(response, options);
-            window.SendWebMessage(json);
+            // Debug logging for AOT troubleshooting
+            if (_windowData.TryGetValue(window, out var data))
+            {
+                data.Logger?.LogDebug("Serializing response: RequestId={RequestId}, PayloadType={PayloadType}, HasError={HasError}",
+                    response.RequestId, response.Payload?.GetType()?.Name ?? "null", response.HasError);
+            }
+
+            try
+            {
+                var json = JsonSerializer.Serialize(response, options);
+                data?.Logger?.LogDebug("Serialized JSON: {Json}", json);
+                window.SendWebMessage(json);
+            }
+            catch (Exception ex)
+            {
+                data?.Logger?.LogError(ex, "Failed to serialize response");
+                // Send error response
+                var errorResponse = new MessageEnvelope
+                {
+                    Type = "response",
+                    RequestId = response.RequestId,
+                    Error = "Serialization failed: " + ex.Message
+                };
+                var errorJson = JsonSerializer.Serialize(errorResponse, options);
+                window.SendWebMessage(errorJson);
+            }
+        }
+
+        /// <summary>
+        /// Gets the result from a Task in an AOT-friendly way
+        /// </summary>
+        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2070:UnrecognizedReflectionPattern",
+            Justification = "Task.Result property access is preserved by the runtime")]
+        private static object? GetTaskResult(Task task, ILogger? logger = null)
+        {
+            // For AOT scenarios, we need to be more careful about reflection
+            var taskType = task.GetType();
+
+            // Debug logging to understand the actual task type
+            logger?.LogDebug("GetTaskResult: taskType={TaskType}, IsGenericType={IsGenericType}, GenericTypeDefinition={GenericTypeDef}",
+                taskType.FullName,
+                taskType.IsGenericType,
+                taskType.IsGenericType ? taskType.GetGenericTypeDefinition().FullName : "N/A");
+
+            // Handle different task types in AOT scenarios
+
+            // 1. Try standard Task<T>.Result property first
+            var standardResultProperty = taskType.GetProperty("Result");
+            if (standardResultProperty != null && standardResultProperty.PropertyType != typeof(void))
+            {
+                var result = standardResultProperty.GetValue(task);
+                logger?.LogDebug("GetTaskResult: Successfully extracted result of type {ResultType} via Result property",
+                    result?.GetType()?.FullName ?? "null");
+                return result;
+            }
+
+            // 2. Handle AOT AsyncStateMachineBox scenario
+            if (taskType.FullName?.Contains("AsyncStateMachineBox") == true)
+            {
+                logger?.LogDebug("GetTaskResult: Detected AsyncStateMachineBox, attempting alternative extraction");
+                logger?.LogDebug("GetTaskResult: Task status - IsCompleted: {IsCompleted}, IsFaulted: {IsFaulted}, IsCanceled: {IsCanceled}",
+                    task.IsCompleted, task.IsFaulted, task.IsCanceled);
+
+                // Get the expected result type from generic arguments first
+                if (taskType.IsGenericType)
+                {
+                    var genericArgs = taskType.GetGenericArguments();
+                    if (genericArgs.Length > 0)
+                    {
+                        var resultType = genericArgs[0]; // Should be UserDataResponse
+                        logger?.LogDebug("GetTaskResult: Expected result type from generics: {ResultType}", resultType.FullName);
+
+                        // Try casting to Task<T> and accessing Result
+                        try
+                        {
+                            var taskGenericType = typeof(Task<>).MakeGenericType(resultType);
+                            if (taskGenericType.IsAssignableFrom(taskType) || task is Task)
+                            {
+                                // Cast to Task<T> and get Result
+                                var castedTask = Convert.ChangeType(task, taskGenericType);
+                                var resultProperty = taskGenericType.GetProperty("Result");
+                                if (resultProperty != null)
+                                {
+                                    var result = resultProperty.GetValue(castedTask);
+                                    if (result != null)
+                                    {
+                                        logger?.LogDebug("GetTaskResult: Successfully extracted result via Task<T> cast: {ResultType}",
+                                            result.GetType().FullName);
+                                        return result;
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            logger?.LogDebug("GetTaskResult: Task<T> cast failed: {Error}", ex.Message);
+                        }
+
+                        // Try using reflection to find the result field
+                        if (task.IsCompleted && !task.IsFaulted && !task.IsCanceled)
+                        {
+                            var fields = taskType.GetFields(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                            logger?.LogDebug("GetTaskResult: Found {FieldCount} fields to inspect", fields.Length);
+
+                            foreach (var field in fields)
+                            {
+                                logger?.LogDebug("GetTaskResult: Checking field {FieldName} of type {FieldType}",
+                                    field.Name, field.FieldType.FullName);
+
+                                // Check if this field contains our result type
+                                if (field.FieldType == resultType ||
+                                    field.FieldType.IsAssignableFrom(resultType) ||
+                                    field.Name.Contains("result", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    try
+                                    {
+                                        var fieldValue = field.GetValue(task);
+                                        if (fieldValue != null && fieldValue.GetType() == resultType)
+                                        {
+                                            logger?.LogDebug("GetTaskResult: Found result in field {FieldName}: {ResultType}",
+                                                field.Name, fieldValue.GetType().FullName);
+                                            return fieldValue;
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        logger?.LogDebug("GetTaskResult: Failed to get field {FieldName}: {Error}",
+                                            field.Name, ex.Message);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Fallback: check generic type definition for debugging
+            if (taskType.IsGenericType)
+            {
+                var genericTypeDef = taskType.GetGenericTypeDefinition();
+                logger?.LogDebug("GetTaskResult: Generic type check failed - genericTypeDef={GenericTypeDef}, expectedTaskType={ExpectedTaskType}",
+                    genericTypeDef.FullName, typeof(Task<>).FullName);
+            }
+
+            // For non-generic Task, there's no result
+            logger?.LogDebug("GetTaskResult: No result found, returning null");
+            return null;
         }
 
         #endregion
