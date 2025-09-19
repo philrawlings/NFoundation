@@ -6,12 +6,15 @@ using Microsoft.Extensions.Logging;
 using NFoundation.Json;
 using System.Reflection;
 using System.Diagnostics.CodeAnalysis;
+using System.Collections.Concurrent;
 
 namespace NFoundation.Photino.NET.Extensions
 {
     public static class PhotinoWindowExtensions
     {
         private static readonly ConditionalWeakTable<PhotinoWindow, PhotinoWindowData> _windowData = new();
+
+        private static readonly ConcurrentDictionary<string, HotReloadWatcherInfo> _globalWatchers = new();
 
         #region Message Envelope
 
@@ -39,6 +42,96 @@ namespace NFoundation.Photino.NET.Extensions
 
         #endregion
 
+        #region Hot Reload Infrastructure
+
+        /// <summary>
+        /// Information about a shared hot reload watcher
+        /// </summary>
+        private class HotReloadWatcherInfo : IDisposable
+        {
+            private readonly object _lock = new();
+            private bool _disposed = false;
+
+            public PhotinoHotReloadMonitor Monitor { get; }
+            public HashSet<PhotinoWindow> SubscribedWindows { get; } = new();
+            public string NormalizedPath { get; }
+            public ILogger? Logger { get; }
+
+            public HotReloadWatcherInfo(string normalizedPath, PhotinoHotReloadMonitor monitor, ILogger? logger = null)
+            {
+                NormalizedPath = normalizedPath;
+                Monitor = monitor;
+                Logger = logger;
+            }
+
+            public bool AddWindow(PhotinoWindow window)
+            {
+                lock (_lock)
+                {
+                    if (_disposed) return false;
+                    return SubscribedWindows.Add(window);
+                }
+            }
+
+            public bool RemoveWindow(PhotinoWindow window)
+            {
+                lock (_lock)
+                {
+                    if (_disposed) return false;
+                    return SubscribedWindows.Remove(window);
+                }
+            }
+
+            public int SubscriberCount
+            {
+                get
+                {
+                    lock (_lock)
+                    {
+                        return _disposed ? 0 : SubscribedWindows.Count;
+                    }
+                }
+            }
+
+            public void SendReloadToAllWindows()
+            {
+                PhotinoWindow[] windows;
+                lock (_lock)
+                {
+                    if (_disposed) return;
+                    windows = SubscribedWindows.ToArray();
+                }
+
+                foreach (var window in windows)
+                {
+                    try
+                    {
+                        window.SendMessage<object?>("__hot_reload", null);
+                        Logger?.LogDebug("Sent hot reload message to window");
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger?.LogWarning(ex, "Failed to send hot reload message to window");
+                    }
+                }
+            }
+
+            public void Dispose()
+            {
+                lock (_lock)
+                {
+                    if (_disposed) return;
+                    _disposed = true;
+
+                    SubscribedWindows.Clear();
+                    Monitor?.Dispose();
+                    Logger?.LogDebug("Disposed hot reload watcher for path: {Path}", NormalizedPath);
+                }
+            }
+        }
+
+        #endregion
+
         #region Handler Storage
 
         private class PhotinoWindowData
@@ -49,6 +142,13 @@ namespace NFoundation.Photino.NET.Extensions
             public Dictionary<string, Delegate> MessageHandlers { get; } = new();
             public Dictionary<string, Delegate> RequestHandlers { get; } = new();
             private JsonSerializerOptions? _serializerOptions;
+            public HashSet<string> HotReloadWatchPaths { get; } = new();
+
+            ~PhotinoWindowData()
+            {
+                // Clean up hot reload subscriptions when the window data is finalized
+                CleanupHotReloadSubscriptionsOnFinalize();
+            }
             public JsonSerializerOptions SerializerOptions
             {
                 get
@@ -689,6 +789,200 @@ namespace NFoundation.Photino.NET.Extensions
 
         #endregion
 
+        #region Hot Reload Extension Methods
+
+        /// <summary>
+        /// Configuration options for hot reload
+        /// </summary>
+        public class HotReloadOptions
+        {
+            public int DebounceDelay { get; set; } = 200;
+            public string FileFilter { get; set; } = "*.*";
+            public bool IncludeSubdirectories { get; set; } = true;
+            public bool EnableOnlyInDebug { get; set; } = true;
+        }
+
+        /// <summary>
+        /// Loads content with hot reload monitoring. Supports both local files and URLs.
+        /// For local files, resolves to the source directory to ensure hot reload works properly.
+        /// </summary>
+        /// <param name="window">The PhotinoWindow instance</param>
+        /// <param name="watchPath">The directory path to watch for changes (e.g., "wwwroot")</param>
+        /// <param name="htmlPath">The HTML file path or URL to load</param>
+        /// <returns>The PhotinoWindow instance for chaining</returns>
+        public static PhotinoWindow Load(this PhotinoWindow window, string watchPath, string htmlPath)
+        {
+            return LoadWithHotReload(window, watchPath, htmlPath, null);
+        }
+
+        /// <summary>
+        /// Loads content with hot reload monitoring. Supports both local files and URLs.
+        /// For local files, resolves to the source directory to ensure hot reload works properly.
+        /// </summary>
+        /// <param name="window">The PhotinoWindow instance</param>
+        /// <param name="watchPath">The directory path to watch for changes (e.g., "wwwroot")</param>
+        /// <param name="htmlPath">The HTML file path or URL to load</param>
+        /// <param name="configureOptions">Optional configuration for hot reload behavior</param>
+        /// <returns>The PhotinoWindow instance for chaining</returns>
+        public static PhotinoWindow LoadWithHotReload(this PhotinoWindow window, string watchPath, string htmlPath, Action<HotReloadOptions>? configureOptions)
+        {
+            if (window == null) throw new ArgumentNullException(nameof(window));
+            if (string.IsNullOrEmpty(watchPath)) throw new ArgumentException("Watch path cannot be null or empty", nameof(watchPath));
+            if (string.IsNullOrEmpty(htmlPath)) throw new ArgumentException("HTML path cannot be null or empty", nameof(htmlPath));
+
+            var data = _windowData.GetOrCreateValue(window);
+            var logger = data.Logger;
+
+            // Configure options
+            var options = new HotReloadOptions();
+            configureOptions?.Invoke(options);
+
+            // Check if hot reload should be enabled
+#if !DEBUG
+            if (options.EnableOnlyInDebug)
+            {
+                logger?.LogDebug("Hot reload disabled in release build");
+                window.Load(htmlPath);
+                return window;
+            }
+#endif
+
+            try
+            {
+                // Detect if htmlPath is a URL
+                if (IsUrl(htmlPath))
+                {
+                    logger?.LogDebug("Loading URL with hot reload watching: {Url}, WatchPath: {WatchPath}", htmlPath, watchPath);
+
+                    // For URLs, just load the URL directly but still watch the path
+                    EnableHotReloadWatching(window, watchPath, options, logger);
+                    window.Load(htmlPath);
+                }
+                else
+                {
+                    // For local files, resolve the path properly
+                    var resolvedLoadPath = ResolveLoadPath(watchPath, htmlPath, logger);
+                    logger?.LogDebug("Loading file with hot reload: {ResolvedPath}, WatchPath: {WatchPath}", resolvedLoadPath, watchPath);
+
+                    EnableHotReloadWatching(window, watchPath, options, logger);
+                    window.Load(resolvedLoadPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Failed to enable hot reload, falling back to regular Load()");
+                window.Load(htmlPath);
+            }
+
+            return window;
+        }
+
+        private static bool IsUrl(string path)
+        {
+            return path.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                   path.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+                   path.StartsWith("file://", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string ResolveLoadPath(string watchPath, string htmlPath, ILogger? logger)
+        {
+            // Use PhotinoHotReloadMonitor's path resolution logic to find the source directory
+            var resolvedWatchPath = ResolveWatchPath(watchPath);
+            var loadPath = Path.Combine(resolvedWatchPath, htmlPath);
+
+            logger?.LogDebug("Resolved load path: {WatchPath} + {HtmlPath} = {LoadPath}",
+                resolvedWatchPath, htmlPath, loadPath);
+
+            return loadPath;
+        }
+
+        private static string ResolveWatchPath(string pathToWatch)
+        {
+            // This mirrors the logic from PhotinoHotReloadMonitor.ResolvePath()
+            // If it's an absolute path and exists, use it directly
+            if (Path.IsPathRooted(pathToWatch) && Directory.Exists(pathToWatch))
+            {
+                return Path.GetFullPath(pathToWatch);
+            }
+
+            // Find the project root (development scenario)
+            var searchDir = Directory.GetCurrentDirectory();
+
+            while (searchDir != null)
+            {
+                // Check if this directory has a .csproj file (indicates project root)
+                if (Directory.GetFiles(searchDir, "*.csproj").Any())
+                {
+                    // Try standard path first
+                    var projectPath = Path.Combine(searchDir, pathToWatch);
+                    if (Directory.Exists(projectPath))
+                    {
+                        return Path.GetFullPath(projectPath);
+                    }
+
+                    // Try Resources subfolder (for embedded resources projects)
+                    var resourcesPath = Path.Combine(searchDir, "Resources", pathToWatch);
+                    if (Directory.Exists(resourcesPath))
+                    {
+                        return Path.GetFullPath(resourcesPath);
+                    }
+                }
+
+                // Move up one directory
+                var parent = Directory.GetParent(searchDir);
+                if (parent == null || parent.FullName == searchDir)
+                    break;
+                searchDir = parent.FullName;
+            }
+
+            // Fallback: try relative to current directory
+            var currentDirPath = Path.Combine(Directory.GetCurrentDirectory(), pathToWatch);
+            if (Directory.Exists(currentDirPath))
+            {
+                return Path.GetFullPath(currentDirPath);
+            }
+
+            // Last resort - return normalized path
+            return Path.GetFullPath(pathToWatch);
+        }
+
+        private static void EnableHotReloadWatching(PhotinoWindow window, string watchPath, HotReloadOptions options, ILogger? logger)
+        {
+            var normalizedPath = Path.GetFullPath(ResolveWatchPath(watchPath));
+            var data = _windowData.GetOrCreateValue(window);
+
+            // Track this watch path for cleanup
+            data.HotReloadWatchPaths.Add(normalizedPath);
+
+            // Get or create shared watcher
+            var watcherInfo = _globalWatchers.GetOrAdd(normalizedPath, path =>
+            {
+                logger?.LogDebug("Creating new hot reload watcher for path: {Path}", path);
+
+                var monitor = PhotinoHotReloadMonitor.Create(
+                    path,
+                    () => {
+                        // When files change, reload all subscribed windows
+                        if (_globalWatchers.TryGetValue(path, out var info))
+                        {
+                            logger?.LogInformation("Hot reload triggered for path: {Path}", path);
+                            info.SendReloadToAllWindows();
+                        }
+                    },
+                    debounceDelay: options.DebounceDelay,
+                    logger: logger
+                );
+
+                return new HotReloadWatcherInfo(path, monitor, logger);
+            });
+
+            // Subscribe this window to the watcher
+            watcherInfo.AddWindow(window);
+            logger?.LogDebug("Subscribed window to hot reload watcher. Total subscribers: {Count}", watcherInfo.SubscriberCount);
+        }
+
+        #endregion
+
         #region Internal Logger Access
 
         /// <summary>
@@ -715,12 +1009,65 @@ namespace NFoundation.Photino.NET.Extensions
         {
             if (_windowData.TryGetValue(window, out var data))
             {
+                // Clean up hot reload subscriptions
+                CleanupHotReloadSubscriptions(window, data);
+
                 data.MessageHandlers.Clear();
                 data.RequestHandlers.Clear();
                 data.Logger?.LogInformation("Cleared all handlers for window");
 
                 // The entry will be removed automatically when the window is garbage collected.
                 _windowData.Remove(window);
+            }
+        }
+
+        private static void CleanupHotReloadSubscriptions(PhotinoWindow window, PhotinoWindowData data)
+        {
+            if (data.HotReloadWatchPaths.Count == 0) return;
+
+            foreach (var watchPath in data.HotReloadWatchPaths.ToArray())
+            {
+                if (_globalWatchers.TryGetValue(watchPath, out var watcherInfo))
+                {
+                    watcherInfo.RemoveWindow(window);
+                    data.Logger?.LogDebug("Unsubscribed window from hot reload watcher: {Path}", watchPath);
+
+                    // If no more subscribers, dispose the watcher
+                    if (watcherInfo.SubscriberCount == 0)
+                    {
+                        if (_globalWatchers.TryRemove(watchPath, out var removedWatcher))
+                        {
+                            removedWatcher.Dispose();
+                            data.Logger?.LogDebug("Disposed unused hot reload watcher: {Path}", watchPath);
+                        }
+                    }
+                }
+            }
+
+            data.HotReloadWatchPaths.Clear();
+        }
+
+        private static void CleanupHotReloadSubscriptionsOnFinalize()
+        {
+            // Note: During finalization, we can't access the specific window instance
+            // but we can clean up watchers that have no subscribers
+            var watchersToRemove = new List<string>();
+
+            foreach (var kvp in _globalWatchers)
+            {
+                var watcherInfo = kvp.Value;
+                if (watcherInfo.SubscriberCount == 0)
+                {
+                    watchersToRemove.Add(kvp.Key);
+                }
+            }
+
+            foreach (var path in watchersToRemove)
+            {
+                if (_globalWatchers.TryRemove(path, out var watcher))
+                {
+                    watcher.Dispose();
+                }
             }
         }
 

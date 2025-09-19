@@ -88,26 +88,14 @@ namespace NFoundation.Photino.NET.Extensions.Sample
 
                 // Register the PhotinoWindow script with console logging enabled
                 // This allows pages to load the script via <script src="photino://photinoWindow.js"></script>
-                .RegisterPhotinoScript();
+                .RegisterPhotinoScript()
+
+                // Load file (with hot-reload support when debugging)
+                .Load("wwwroot", "index.html");
+                //.Load("Resources/wwwroot", "http://localhost:8000"); // For embedded resources and Photino.NET File Server
+
 
             logger.LogInformation("Starting PhotinoWindow application: {Title}", windowTitle);
-
-            var htmlPath = "wwwroot/index.html";
-#if DEBUG
-            // Enable hot reload monitoring for development
-            using var hotReloadMonitor = PhotinoHotReloadMonitor.Create("wwwroot",
-                () =>
-                {
-                    logger.LogInformation("Reloading");
-                    window.SendMessage<object?>("__hot_reload", null);
-                },
-                debounceDelay: 200,
-                logger: windowLogger
-            );
-            logger.LogInformation("Hot reload monitor watching: {Path}", hotReloadMonitor.WatchPath);
-            htmlPath = Path.Combine(hotReloadMonitor.WatchPath, "index.html");
-#endif
-            window.Load(htmlPath);
 
             window.WaitForClose();
 
