@@ -812,7 +812,7 @@ namespace NFoundation.Photino.NET.Extensions
         /// <returns>The PhotinoWindow instance for chaining</returns>
         public static PhotinoWindow Load(this PhotinoWindow window, string watchPath, string htmlPath)
         {
-            return LoadWithHotReload(window, watchPath, htmlPath, null);
+            return Load(window, watchPath, htmlPath, null);
         }
 
         /// <summary>
@@ -824,7 +824,7 @@ namespace NFoundation.Photino.NET.Extensions
         /// <param name="htmlPath">The HTML file path or URL to load</param>
         /// <param name="configureOptions">Optional configuration for hot reload behavior</param>
         /// <returns>The PhotinoWindow instance for chaining</returns>
-        public static PhotinoWindow LoadWithHotReload(this PhotinoWindow window, string watchPath, string htmlPath, Action<HotReloadOptions>? configureOptions)
+        public static PhotinoWindow Load(this PhotinoWindow window, string watchPath, string htmlPath, Action<HotReloadOptions>? configureOptions)
         {
             if (window == null) throw new ArgumentNullException(nameof(window));
             if (string.IsNullOrEmpty(watchPath)) throw new ArgumentException("Watch path cannot be null or empty", nameof(watchPath));
@@ -842,7 +842,10 @@ namespace NFoundation.Photino.NET.Extensions
             if (options.EnableOnlyInDebug)
             {
                 logger?.LogDebug("Hot reload disabled in release build");
-                window.Load(htmlPath);
+                if (IsUrl(htmlPath))
+                    window.Load(htmlPath);
+                else
+                    window.Load(watchPath + "/" + htmlPath);
                 return window;
             }
 #endif
