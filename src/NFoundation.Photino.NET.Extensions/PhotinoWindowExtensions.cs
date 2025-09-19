@@ -1,17 +1,16 @@
 using Photino.NET;
-using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using NFoundation.Json;
 using System.Reflection;
-using System.IO;
 
 namespace NFoundation.Photino.NET.Extensions
 {
     public static class PhotinoWindowExtensions
     {
-        private static readonly ConcurrentDictionary<PhotinoWindow, WindowHandlers> _windowHandlers = new();
+        private static readonly ConditionalWeakTable<PhotinoWindow, PhotinoWindowData> _windowData = new();
 
         #region Message Envelope
 
@@ -41,7 +40,7 @@ namespace NFoundation.Photino.NET.Extensions
 
         #region Handler Storage
 
-        private class WindowHandlers
+        private class PhotinoWindowData
         {
             private readonly object _lock = new();
             private bool _baseHandlerRegistered = false;
@@ -70,15 +69,15 @@ namespace NFoundation.Photino.NET.Extensions
 
         public static PhotinoWindow SetJsonSerializerOptions(this PhotinoWindow window, JsonSerializerOptions options)
         {
-            var handlers = _windowHandlers.GetOrAdd(window, _ => new WindowHandlers());
-            handlers.SerializerOptions = options;
+            var data = _windowData.GetOrCreateValue(window);
+            data.SerializerOptions = options;
             return window;
         }
 
         public static PhotinoWindow SetMessageLogger(this PhotinoWindow window, ILogger logger)
         {
-            var handlers = _windowHandlers.GetOrAdd(window, _ => new WindowHandlers());
-            handlers.Logger = logger;
+            var data = _windowData.GetOrCreateValue(window);
+            data.Logger = logger;
             return window;
         }
 
@@ -93,35 +92,35 @@ namespace NFoundation.Photino.NET.Extensions
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
 
-            var handlers = _windowHandlers.GetOrAdd(window, _ => new WindowHandlers());
+            var data = _windowData.GetOrCreateValue(window);
 
-            lock (handlers.MessageHandlers)
+            lock (data.MessageHandlers)
             {
-                if (handlers.MessageHandlers.ContainsKey(type))
+                if (data.MessageHandlers.ContainsKey(type))
                     throw new InvalidOperationException($"Message handler for type '{type}' is already registered");
 
-                handlers.MessageHandlers[type] = handler;
+                data.MessageHandlers[type] = handler;
             }
 
-            if (handlers.EnsureBaseHandlerRegistered(window))
+            if (data.EnsureBaseHandlerRegistered(window))
             {
                 window.RegisterWebMessageReceivedHandler((sender, message) => OnWebMessageReceived(window, message));
-                handlers.Logger?.LogDebug("Registered base web message handler for window");
+                data.Logger?.LogDebug("Registered base web message handler for window");
             }
 
-            handlers.Logger?.LogInformation("Registered message handler for type: {Type}", type);
+            data.Logger?.LogInformation("Registered message handler for type: {Type}", type);
             return window;
         }
 
         public static PhotinoWindow UnregisterMessageHandler(this PhotinoWindow window, string type)
         {
-            if (_windowHandlers.TryGetValue(window, out var handlers))
+            if (_windowData.TryGetValue(window, out var data))
             {
-                lock (handlers.MessageHandlers)
+                lock (data.MessageHandlers)
                 {
-                    if (handlers.MessageHandlers.Remove(type))
+                    if (data.MessageHandlers.Remove(type))
                     {
-                        handlers.Logger?.LogInformation("Unregistered message handler for type: {Type}", type);
+                        data.Logger?.LogInformation("Unregistered message handler for type: {Type}", type);
                     }
                 }
             }
@@ -142,35 +141,35 @@ namespace NFoundation.Photino.NET.Extensions
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
 
-            var handlers = _windowHandlers.GetOrAdd(window, _ => new WindowHandlers());
+            var data = _windowData.GetOrCreateValue(window);
 
-            lock (handlers.RequestHandlers)
+            lock (data.RequestHandlers)
             {
-                if (handlers.RequestHandlers.ContainsKey(type))
+                if (data.RequestHandlers.ContainsKey(type))
                     throw new InvalidOperationException($"Request handler for type '{type}' is already registered");
 
-                handlers.RequestHandlers[type] = handler;
+                data.RequestHandlers[type] = handler;
             }
 
-            if (handlers.EnsureBaseHandlerRegistered(window))
+            if (data.EnsureBaseHandlerRegistered(window))
             {
                 window.RegisterWebMessageReceivedHandler((sender, message) => OnWebMessageReceived(window, message));
-                handlers.Logger?.LogDebug("Registered base web message handler for window");
+                data.Logger?.LogDebug("Registered base web message handler for window");
             }
 
-            handlers.Logger?.LogInformation("Registered request handler for type: {Type}", type);
+            data.Logger?.LogInformation("Registered request handler for type: {Type}", type);
             return window;
         }
 
         public static PhotinoWindow UnregisterRequestHandler(this PhotinoWindow window, string type)
         {
-            if (_windowHandlers.TryGetValue(window, out var handlers))
+            if (_windowData.TryGetValue(window, out var data))
             {
-                lock (handlers.RequestHandlers)
+                lock (data.RequestHandlers)
                 {
-                    if (handlers.RequestHandlers.Remove(type))
+                    if (data.RequestHandlers.Remove(type))
                     {
-                        handlers.Logger?.LogInformation("Unregistered request handler for type: {Type}", type);
+                        data.Logger?.LogInformation("Unregistered request handler for type: {Type}", type);
                     }
                 }
             }
@@ -183,8 +182,8 @@ namespace NFoundation.Photino.NET.Extensions
 
         public static void SendMessage<T>(this PhotinoWindow window, string type, T payload)
         {
-            var handlers = _windowHandlers.GetOrAdd(window, _ => new WindowHandlers());
-            var options = handlers.SerializerOptions;
+            var data = _windowData.GetOrCreateValue(window);
+            var options = data.SerializerOptions;
 
             var envelope = new MessageEnvelope
             {
@@ -195,7 +194,7 @@ namespace NFoundation.Photino.NET.Extensions
             var json = JsonSerializer.Serialize(envelope, options);
             window.SendWebMessage(json);
 
-            handlers.Logger?.LogDebug("Sent message of type: {Type}", type);
+            data.Logger?.LogDebug("Sent message of type: {Type}", type);
         }
 
 
@@ -205,57 +204,57 @@ namespace NFoundation.Photino.NET.Extensions
 
         private static async void OnWebMessageReceived(PhotinoWindow window, string message)
         {
-            if (!_windowHandlers.TryGetValue(window, out var handlers))
+            if (!_windowData.TryGetValue(window, out var data))
                 return;
 
-            var options = handlers.SerializerOptions;
+            var options = data.SerializerOptions;
 
             try
             {
                 var envelope = JsonSerializer.Deserialize<MessageEnvelope>(message, options);
                 if (envelope == null)
                 {
-                    handlers.Logger?.LogWarning("Received null envelope from web message");
+                    data.Logger?.LogWarning("Received null envelope from web message");
                     return;
                 }
 
-                handlers.Logger?.LogDebug("Received {MessageType} of type: {Type}",
+                data.Logger?.LogDebug("Received {MessageType} of type: {Type}",
                     envelope.IsRequest ? "request" : "message", envelope.Type);
 
                 if (envelope.IsResponse)
                 {
                     // Responses are not expected in this direction (JS to C#)
-                    handlers.Logger?.LogWarning("Unexpected response message received: {RequestId}", envelope.RequestId);
+                    data.Logger?.LogWarning("Unexpected response message received: {RequestId}", envelope.RequestId);
                     return;
                 }
 
                 if (envelope.IsRequest)
                 {
-                    await HandleRequest(window, handlers, envelope, options);
+                    await HandleRequest(window, data, envelope, options);
                 }
                 else
                 {
-                    HandleMessage(handlers, envelope, options);
+                    HandleMessage(data, envelope, options);
                 }
             }
             catch (JsonException ex)
             {
-                handlers.Logger?.LogError(ex, "Failed to deserialize web message: {Message}", message);
+                data.Logger?.LogError(ex, "Failed to deserialize web message: {Message}", message);
             }
             catch (Exception ex)
             {
-                handlers.Logger?.LogError(ex, "Error processing web message");
+                data.Logger?.LogError(ex, "Error processing web message");
             }
         }
 
-        private static void HandleMessage(WindowHandlers handlers, MessageEnvelope envelope, JsonSerializerOptions options)
+        private static void HandleMessage(PhotinoWindowData data, MessageEnvelope envelope, JsonSerializerOptions options)
         {
             Delegate? handler;
-            lock (handlers.MessageHandlers)
+            lock (data.MessageHandlers)
             {
-                if (!handlers.MessageHandlers.TryGetValue(envelope.Type, out handler))
+                if (!data.MessageHandlers.TryGetValue(envelope.Type, out handler))
                 {
-                    handlers.Logger?.LogWarning("No message handler registered for type: {Type}", envelope.Type);
+                    data.Logger?.LogWarning("No message handler registered for type: {Type}", envelope.Type);
                     return;
                 }
             }
@@ -293,17 +292,17 @@ namespace NFoundation.Photino.NET.Extensions
                     handler.DynamicInvoke(typedPayload);
                 }
 
-                handlers.Logger?.LogDebug("Successfully handled message of type: {Type}", envelope.Type);
+                data.Logger?.LogDebug("Successfully handled message of type: {Type}", envelope.Type);
             }
             catch (Exception ex)
             {
-                handlers.Logger?.LogError(ex, "Error handling message of type: {Type}", envelope.Type);
+                data.Logger?.LogError(ex, "Error handling message of type: {Type}", envelope.Type);
             }
         }
 
         private static async Task HandleRequest(
             PhotinoWindow window,
-            WindowHandlers handlers,
+            PhotinoWindowData data,
             MessageEnvelope envelope,
             JsonSerializerOptions options)
         {
@@ -316,12 +315,12 @@ namespace NFoundation.Photino.NET.Extensions
             try
             {
                 Delegate? handler;
-                lock (handlers.RequestHandlers)
+                lock (data.RequestHandlers)
                 {
-                    if (!handlers.RequestHandlers.TryGetValue(envelope.Type, out handler))
+                    if (!data.RequestHandlers.TryGetValue(envelope.Type, out handler))
                     {
                         response.Error = $"No request handler registered for type: {envelope.Type}";
-                        handlers.Logger?.LogWarning("No request handler registered for type: {Type}", envelope.Type);
+                        data.Logger?.LogWarning("No request handler registered for type: {Type}", envelope.Type);
                         SendResponse(window, response, options);
                         return;
                     }
@@ -372,11 +371,11 @@ namespace NFoundation.Photino.NET.Extensions
                     response.Payload = resultProperty?.GetValue(task);
                 }
 
-                handlers.Logger?.LogDebug("Successfully handled request of type: {Type}", envelope.Type);
+                data.Logger?.LogDebug("Successfully handled request of type: {Type}", envelope.Type);
             }
             catch (Exception ex)
             {
-                handlers.Logger?.LogError(ex, "Error handling request of type: {Type}", envelope.Type);
+                data.Logger?.LogError(ex, "Error handling request of type: {Type}", envelope.Type);
                 response.Error = ex.Message;
             }
 
@@ -450,8 +449,8 @@ namespace NFoundation.Photino.NET.Extensions
                 return new MemoryStream(System.Text.Encoding.UTF8.GetBytes($"Resource not found: {url}"));
             });
 
-            var handlers = _windowHandlers.GetOrAdd(window, _ => new WindowHandlers());
-            handlers.Logger?.LogInformation("Registered PhotinoWindow script scheme handler for scheme: {Scheme}", scheme);
+            var data = _windowData.GetOrCreateValue(window);
+            data.Logger?.LogInformation("Registered PhotinoWindow script scheme handler for scheme: {Scheme}", scheme);
 
             return window;
         }
@@ -462,11 +461,16 @@ namespace NFoundation.Photino.NET.Extensions
 
         public static void ClearHandlers(this PhotinoWindow window)
         {
-            if (_windowHandlers.TryRemove(window, out var handlers))
+            if (_windowData.TryGetValue(window, out var data))
             {
-                handlers.MessageHandlers.Clear();
-                handlers.RequestHandlers.Clear();
-                handlers.Logger?.LogInformation("Cleared all handlers for window");
+                data.MessageHandlers.Clear();
+                data.RequestHandlers.Clear();
+                data.Logger?.LogInformation("Cleared all handlers for window");
+
+                // Note: ConditionalWeakTable doesn't have TryRemove.
+                // The entry will be removed automatically when the window is garbage collected.
+                // We can use Remove() but it returns void, not bool.
+                _windowData.Remove(window);
             }
         }
 
