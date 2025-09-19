@@ -104,11 +104,8 @@
         <div id="log"></div>
     </div>
 
-    <!-- Load PhotinoWindow library first -->
-    <script src="js/photinoWindow.js"></script>
-
-    <!-- Custom scheme handler -->
-    <script src="app://dynamic.js"></script>
+    <!-- Load PhotinoWindow library from embedded resource via custom scheme -->
+    <script src="photino://photinoWindow.js"></script>
 
     <script>
         // Initialize with debug mode
@@ -119,7 +116,9 @@
         function log(message) {
             const logDiv = document.getElementById('log');
             const timestamp = new Date().toLocaleTimeString();
-            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(logEntry);
             logDiv.scrollTop = logDiv.scrollHeight;
         }
 

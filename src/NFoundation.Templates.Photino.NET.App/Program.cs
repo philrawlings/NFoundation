@@ -84,23 +84,9 @@ namespace NFoundation.Photino.NET.Extensions.Sample
                     }
                 })
 
-
-                // Register a custom scheme handler
-                .RegisterCustomSchemeHandler("app", (object sender, string scheme, string url, out string contentType) =>
-                {
-                    logger.LogDebug("Custom scheme handler called: {url}", url);
-
-                    switch (url.ToLower())
-                    {
-                        case "app://dynamic.js":
-                            contentType = "text/javascript";
-                            return new MemoryStream(Encoding.UTF8.GetBytes(@"
-                                console.log('Custom scheme handler loaded');
-                            "));
-                        default:
-                            throw new Exception($"Resource '{url}' not found");
-                    }
-                })
+                // Register the PhotinoWindow script scheme handler
+                // This allows pages to load the script via <script src="photino://photinoWindow.js"></script>
+                .RegisterPhotinoScriptScheme("photino")
 
                 // Load the HTML content
                 .Load("wwwroot/index.html");

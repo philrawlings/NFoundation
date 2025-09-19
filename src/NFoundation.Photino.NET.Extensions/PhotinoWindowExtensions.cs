@@ -4,6 +4,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using NFoundation.Json;
+using System.Reflection;
+using System.IO;
 
 namespace NFoundation.Photino.NET.Extensions
 {
@@ -385,6 +387,61 @@ namespace NFoundation.Photino.NET.Extensions
         {
             var json = JsonSerializer.Serialize(response, options);
             window.SendWebMessage(json);
+        }
+
+        #endregion
+
+        #region Script Injection
+
+        private static string? _cachedPhotinoScript = null;
+
+        /// <summary>
+        /// Gets the embedded photinoWindow.js script content
+        /// </summary>
+        public static string GetPhotinoWindowScript()
+        {
+            if (_cachedPhotinoScript != null)
+                return _cachedPhotinoScript;
+
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceName = "NFoundation.Photino.NET.Extensions.photinoWindow.js";
+
+            using (var stream = assembly.GetManifestResourceStream(resourceName))
+            {
+                if (stream == null)
+                    throw new InvalidOperationException($"Embedded resource '{resourceName}' not found");
+
+                using (var reader = new StreamReader(stream))
+                {
+                    _cachedPhotinoScript = reader.ReadToEnd();
+                }
+            }
+
+            return _cachedPhotinoScript;
+        }
+
+        /// <summary>
+        /// Registers a custom scheme handler that serves the PhotinoWindow script
+        /// </summary>
+        public static PhotinoWindow RegisterPhotinoScriptScheme(this PhotinoWindow window, string scheme = "photino")
+        {
+            window.RegisterCustomSchemeHandler(scheme, (object sender, string schemeValue, string url, out string contentType) =>
+            {
+                if (url.ToLower() == $"{scheme}://photinowindow.js")
+                {
+                    contentType = "text/javascript";
+                    var script = GetPhotinoWindowScript();
+                    return new MemoryStream(System.Text.Encoding.UTF8.GetBytes(script));
+                }
+
+                contentType = "text/plain";
+                return new MemoryStream(System.Text.Encoding.UTF8.GetBytes($"Resource not found: {url}"));
+            });
+
+            var handlers = _windowHandlers.GetOrAdd(window, _ => new WindowHandlers());
+            handlers.Logger?.LogInformation("Registered PhotinoWindow script scheme handler for scheme: {Scheme}", scheme);
+
+            return window;
         }
 
         #endregion
