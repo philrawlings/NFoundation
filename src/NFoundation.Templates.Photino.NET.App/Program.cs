@@ -1,24 +1,10 @@
 using Microsoft.Extensions.Logging;
 using Photino.NET;
 using System.Drawing;
-using System.Text;
 using NFoundation.Json;
 
 namespace NFoundation.Photino.NET.Extensions.Sample
 {
-    // Example data classes for typed messaging
-    public class UserDataRequest
-    {
-        public int UserId { get; set; }
-    }
-
-    public class UserDataResponse
-    {
-        public string Name { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public int Age { get; set; }
-    }
-
     class Program
     {
         [STAThread]
@@ -42,8 +28,7 @@ namespace NFoundation.Photino.NET.Extensions.Sample
             string windowTitle = "PhotinoWindow Demo with Typed Messaging";
 
             var window = new PhotinoWindow()
-                .SetLogger(windowLogger) // Use the log patcher extension
-                .SetMessageLogger(windowLogger) // For message handling logs
+                .SetLogger(windowLogger)
                 .SetJsonSerializerOptions(JsonUtilities.GetSerializerOptions())
                 .SetTitle(windowTitle)
                 .SetUseOsDefaultSize(false)
@@ -95,5 +80,18 @@ namespace NFoundation.Photino.NET.Extensions.Sample
             window.WaitForClose();
             logger.LogInformation("PhotinoWindow application closed");
         }
+    }
+
+    // Example data classes for typed messaging
+    public class UserDataRequest
+    {
+        public int UserId { get; set; }
+    }
+
+    public class UserDataResponse
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public int Age { get; set; }
     }
 }

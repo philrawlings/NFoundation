@@ -74,7 +74,7 @@ namespace NFoundation.Photino.NET.Extensions
             return window;
         }
 
-        public static PhotinoWindow SetMessageLogger(this PhotinoWindow window, ILogger logger)
+        public static PhotinoWindow SetLogger(this PhotinoWindow window, ILogger logger)
         {
             var data = _windowData.GetOrCreateValue(window);
             data.Logger = logger;
@@ -457,6 +457,26 @@ namespace NFoundation.Photino.NET.Extensions
 
         #endregion
 
+        #region Internal Logger Access
+
+        /// <summary>
+        /// Internal method to get the logger for a window (used by PhotinoWindowLogPatcher)
+        /// </summary>
+        internal static ILogger? GetWindowLogger(PhotinoWindow window)
+        {
+            return _windowData.TryGetValue(window, out var data) ? data.Logger : null;
+        }
+
+        /// <summary>
+        /// Internal method to check if a window has a logger (used by PhotinoWindowLogPatcher)
+        /// </summary>
+        internal static bool HasWindowLogger(PhotinoWindow window)
+        {
+            return _windowData.TryGetValue(window, out var data) && data.Logger != null;
+        }
+
+        #endregion
+
         #region Cleanup
 
         public static void ClearHandlers(this PhotinoWindow window)
@@ -467,9 +487,7 @@ namespace NFoundation.Photino.NET.Extensions
                 data.RequestHandlers.Clear();
                 data.Logger?.LogInformation("Cleared all handlers for window");
 
-                // Note: ConditionalWeakTable doesn't have TryRemove.
                 // The entry will be removed automatically when the window is garbage collected.
-                // We can use Remove() but it returns void, not bool.
                 _windowData.Remove(window);
             }
         }

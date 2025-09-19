@@ -1,18 +1,18 @@
 using Microsoft.Extensions.Logging;
 using Photino.NET;
 using System.Reflection;
-using System.Collections.Concurrent;
 using HarmonyLib;
+using System.Runtime.CompilerServices;
 
 namespace NFoundation.Photino.NET.Extensions
 {
     /// <summary>
     /// Patches PhotinoWindow's private static Log method to use ILogger or console output.
     /// Call Initialize() once at application startup to apply the patch.
+    /// Uses the same logger storage as PhotinoWindowExtensions for consistency.
     /// </summary>
     public static class PhotinoWindowLogPatcher
     {
-        private static readonly ConcurrentDictionary<PhotinoWindow, ILogger> _windowLoggers = new();
         private static Harmony? _harmony;
         private static bool _isPatched = false;
         private static readonly object _lock = new object();
@@ -31,7 +31,7 @@ namespace NFoundation.Photino.NET.Extensions
                     return;
                 }
 
-                _harmony = new Harmony("com.windowwrappertest.photinowindowlogpatcher");
+                _harmony = new Harmony(typeof(PhotinoWindowLogPatcher).Name);
 
                 // Find the private instance Log method in PhotinoWindow
                 var photinoWindowType = typeof(PhotinoWindow);
@@ -69,7 +69,6 @@ namespace NFoundation.Photino.NET.Extensions
 
                 _harmony.UnpatchAll(_harmony.Id);
                 _isPatched = false;
-                _windowLoggers.Clear();
             }
         }
 
@@ -84,8 +83,9 @@ namespace NFoundation.Photino.NET.Extensions
                 BindingFlags.Public | BindingFlags.Instance);
             var title = titleProp?.GetValue(__instance) as string ?? "PhotinoWindow";
 
-            // Check if this window has a specific logger
-            if (_windowLoggers.TryGetValue(__instance, out var logger))
+            // Check if this window has a specific logger (using shared storage)
+            var logger = PhotinoWindowExtensions.GetWindowLogger(__instance);
+            if (logger != null)
             {
                 // Use ILogger for this window
                 if (message.Contains("error", StringComparison.OrdinalIgnoreCase))
@@ -118,63 +118,5 @@ namespace NFoundation.Photino.NET.Extensions
         /// Check if the patcher is currently active
         /// </summary>
         public static bool IsPatched => _isPatched;
-
-        #region Extension Methods for PhotinoWindow
-
-        /// <summary>
-        /// Attach a specific ILogger to this PhotinoWindow instance
-        /// </summary>
-        public static PhotinoWindow SetLogger(this PhotinoWindow window, ILogger logger)
-        {
-            if (window == null) throw new ArgumentNullException(nameof(window));
-            if (logger == null) throw new ArgumentNullException(nameof(logger));
-
-            if (!_isPatched)
-            {
-                throw new InvalidOperationException(
-                    "PhotinoWindowLogPatcher must be initialized before setting window-specific loggers. " +
-                    "Call PhotinoWindowLogPatcher.Initialize() first.");
-            }
-
-            _windowLoggers[window] = logger;
-            logger.LogDebug("Logger attached to PhotinoWindow with title: {Title}", window.Title);
-
-            return window;
-        }
-
-        /// <summary>
-        /// Remove the specific ILogger from this PhotinoWindow instance (will fall back to default)
-        /// </summary>
-        public static PhotinoWindow RemoveLogger(this PhotinoWindow window)
-        {
-            if (window == null) throw new ArgumentNullException(nameof(window));
-
-            if (_windowLoggers.TryRemove(window, out var removedLogger))
-            {
-                removedLogger.LogDebug("Logger removed from PhotinoWindow with title: {Title}", window.Title);
-            }
-
-            return window;
-        }
-
-        /// <summary>
-        /// Check if this PhotinoWindow has a specific logger attached
-        /// </summary>
-        public static bool HasLogger(this PhotinoWindow window)
-        {
-            if (window == null) throw new ArgumentNullException(nameof(window));
-            return _windowLoggers.ContainsKey(window);
-        }
-
-        /// <summary>
-        /// Get the logger attached to this PhotinoWindow, or null if none
-        /// </summary>
-        public static ILogger? GetLogger(this PhotinoWindow window)
-        {
-            if (window == null) throw new ArgumentNullException(nameof(window));
-            return _windowLoggers.TryGetValue(window, out var logger) ? logger : null;
-        }
-
-        #endregion
     }
 }
