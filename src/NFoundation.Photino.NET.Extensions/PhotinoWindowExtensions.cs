@@ -421,9 +421,12 @@ namespace NFoundation.Photino.NET.Extensions
         }
 
         /// <summary>
-        /// Registers a custom scheme handler that serves the PhotinoWindow script
+        /// Registers a custom scheme handler that serves the PhotinoWindow script with auto-initialization
         /// </summary>
-        public static PhotinoWindow RegisterPhotinoScriptScheme(this PhotinoWindow window, string scheme = "photino")
+        /// <param name="window">The PhotinoWindow instance</param>
+        /// <param name="scheme">The custom scheme name (default: "photino")</param>
+        /// <param name="enableDebugLogging">Enable debug logging in PhotinoWindow (default: false)</param>
+        public static PhotinoWindow RegisterPhotinoScriptScheme(this PhotinoWindow window, string scheme = "photino", bool enableDebugLogging = false)
         {
             window.RegisterCustomSchemeHandler(scheme, (object sender, string schemeValue, string url, out string contentType) =>
             {
@@ -431,6 +434,15 @@ namespace NFoundation.Photino.NET.Extensions
                 {
                     contentType = "text/javascript";
                     var script = GetPhotinoWindowScript();
+
+                    // Build the initialization options JSON
+                    var initOptions = $"{{ enableDebugLogging: {enableDebugLogging.ToString().ToLower()} }}";
+
+                    // Replace the placeholder with actual options
+                    script = script.Replace(
+                        "/* PHOTINO_INIT_OPTIONS_PLACEHOLDER */{}/* PHOTINO_INIT_OPTIONS_END */",
+                        $"/* PHOTINO_INIT_OPTIONS_PLACEHOLDER */{initOptions}/* PHOTINO_INIT_OPTIONS_END */");
+
                     return new MemoryStream(System.Text.Encoding.UTF8.GetBytes(script));
                 }
 

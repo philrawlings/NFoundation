@@ -105,13 +105,10 @@
     </div>
 
     <!-- Load PhotinoWindow library from embedded resource via custom scheme -->
+    <!-- The script auto-initializes with options specified in Program.cs -->
     <script src="photino://photinoWindow.js"></script>
 
     <script>
-        // Initialize with debug mode
-        PhotinoWindow.initialize({ debug: true });
-
-
         // Utility functions
         function log(message) {
             const logDiv = document.getElementById('log');

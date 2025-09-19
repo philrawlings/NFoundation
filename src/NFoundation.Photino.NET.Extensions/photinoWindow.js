@@ -13,12 +13,12 @@
         _pendingRequests: new Map(),
         _requestIdCounter: 0,
         _initialized: false,
-        _debug: false,
+        _enableDebugLogging: false,
 
         /**
          * Initialize the message handling system
          * @param {Object} options - Configuration options
-         * @param {boolean} options.debug - Enable debug logging
+         * @param {boolean} options.enableDebugLogging - Enable debug logging
          */
         initialize(options = {}) {
             if (this._initialized) {
@@ -26,7 +26,7 @@
                 return this;
             }
 
-            this._debug = options.debug || false;
+            this._enableDebugLogging = options.enableDebugLogging || false;
 
             // Set up the global message receiver
             window.external.receiveMessage((message) => {
@@ -233,7 +233,7 @@
          * @private
          */
         _log(...args) {
-            if (this._debug) {
+            if (this._enableDebugLogging) {
                 console.log('[PhotinoWindow]', ...args);
             }
         },
@@ -264,5 +264,10 @@
 
     // Expose PhotinoWindow globally
     window.PhotinoWindow = PhotinoWindow;
+
+    // Auto-initialize with injected options
+    // The placeholder below will be replaced by RegisterPhotinoScriptScheme
+    const initOptions = /* PHOTINO_INIT_OPTIONS_PLACEHOLDER */{}/* PHOTINO_INIT_OPTIONS_END */;
+    PhotinoWindow.initialize(initOptions);
 
 })(window);
