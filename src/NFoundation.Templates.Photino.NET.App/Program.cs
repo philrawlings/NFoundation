@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Photino.NET;
 using System.Drawing;
-using NFoundation.Json;
+using System.Text.Json.Serialization;
 
 namespace NFoundation.Photino.NET.Extensions.Sample
 {
@@ -29,7 +29,14 @@ namespace NFoundation.Photino.NET.Extensions.Sample
 
             var window = new PhotinoWindow()
                 .SetLogger(windowLogger)
-                .SetJsonSerializerOptions(JsonUtilities.GetSerializerOptions())
+
+                // Optional
+                .ConfigureJsonSerializerOptions(options =>
+                {
+                    // Add JSON source generator context for AOT/trimming support
+                    options.TypeInfoResolverChain.Add(MyJsonContext.Default);
+                })
+
                 .SetTitle(windowTitle)
                 .SetUseOsDefaultSize(false)
                 .SetSize(new Size(1200, 900))
@@ -92,5 +99,12 @@ namespace NFoundation.Photino.NET.Extensions.Sample
         public string Name { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public int Age { get; set; }
+    }
+
+    // JSON source generator context for AOT/trimming support
+    [JsonSerializable(typeof(UserDataRequest))]
+    [JsonSerializable(typeof(UserDataResponse))]
+    internal partial class MyJsonContext : JsonSerializerContext
+    {
     }
 }

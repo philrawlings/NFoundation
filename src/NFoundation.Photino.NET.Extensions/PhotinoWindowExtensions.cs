@@ -47,7 +47,21 @@ namespace NFoundation.Photino.NET.Extensions
 
             public Dictionary<string, Delegate> MessageHandlers { get; } = new();
             public Dictionary<string, Delegate> RequestHandlers { get; } = new();
-            public JsonSerializerOptions SerializerOptions { get; set; } = JsonUtilities.GetSerializerOptions();
+            private JsonSerializerOptions? _serializerOptions;
+            public JsonSerializerOptions SerializerOptions
+            {
+                get
+                {
+                    if (_serializerOptions == null)
+                    {
+                        _serializerOptions = JsonUtilities.GetSerializerOptions();
+                        // Automatically add internal source generator context for framework types
+                        _serializerOptions.TypeInfoResolverChain.Add(PhotinoInternalJsonContext.Default);
+                    }
+                    return _serializerOptions;
+                }
+                set => _serializerOptions = value;
+            }
             public ILogger? Logger { get; set; }
 
             public bool EnsureBaseHandlerRegistered(PhotinoWindow window)
@@ -67,9 +81,20 @@ namespace NFoundation.Photino.NET.Extensions
 
         #region Configuration
 
-        public static PhotinoWindow SetJsonSerializerOptions(this PhotinoWindow window, JsonSerializerOptions options)
+        public static PhotinoWindow ConfigureJsonSerializerOptions(this PhotinoWindow window, Action<JsonSerializerOptions> configure)
         {
             var data = _windowData.GetOrCreateValue(window);
+
+            // Start with default options from JsonUtilities
+            var options = JsonUtilities.GetSerializerOptions();
+
+            // Automatically add internal source generator context for framework types
+            options.TypeInfoResolverChain.Add(PhotinoInternalJsonContext.Default);
+
+            // Apply user configuration
+            configure(options);
+
+            // Store the configured options
             data.SerializerOptions = options;
             return window;
         }
@@ -395,7 +420,7 @@ namespace NFoundation.Photino.NET.Extensions
         /// <summary>
         /// Represents a console log message from JavaScript
         /// </summary>
-        private class ConsoleLogMessage
+        internal class ConsoleLogMessage
         {
             public string Level { get; set; } = string.Empty;
             public string Message { get; set; } = string.Empty;
@@ -551,5 +576,14 @@ namespace NFoundation.Photino.NET.Extensions
         }
 
         #endregion
+    }
+
+    /// <summary>
+    /// Internal JSON source generator context for framework types
+    /// </summary>
+    [JsonSerializable(typeof(PhotinoWindowExtensions.MessageEnvelope))]
+    [JsonSerializable(typeof(PhotinoWindowExtensions.ConsoleLogMessage))]
+    internal partial class PhotinoInternalJsonContext : JsonSerializerContext
+    {
     }
 }

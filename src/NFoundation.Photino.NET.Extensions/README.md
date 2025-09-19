@@ -312,16 +312,31 @@ The library uses `ConditionalWeakTable<PhotinoWindow, PhotinoWindowData>` for st
 
 ### JSON Serialization Configuration
 
-Customize JSON serialization for your message payloads:
+Configure JSON serialization for your message payloads. The library starts with sensible defaults from `JsonUtilities.GetSerializerOptions()` and allows you to customize them:
 
 ```csharp
-var options = new JsonSerializerOptions
+// Optional
+window.ConfigureJsonSerializerOptions(options =>
 {
-    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    WriteIndented = true
-};
+    // Default options are: camelCase, not indented
+    // Included converters: JsonStringEnumConverter and JsonDateTimeConverter (microsecond precision)
 
-window.SetJsonSerializerOptions(options);
+    // Add JSON source generators for AOT/trimming support
+    options.TypeInfoResolverChain.Add(MyJsonContext.Default);
+
+    // Add custom converters
+    options.Converters.Add(new JsonCustomConverter());
+});
+```
+
+For AOT and trimming scenarios, create a JSON source generator context:
+
+```csharp
+[JsonSerializable(typeof(MyRequestType))]
+[JsonSerializable(typeof(MyResponseType))]
+internal partial class MyJsonContext : JsonSerializerContext
+{
+}
 ```
 
 ## API Reference
@@ -331,7 +346,7 @@ window.SetJsonSerializerOptions(options);
 | Method | Description |
 |--------|-------------|
 | `SetLogger(ILogger)` | Configure logger for the window |
-| `SetJsonSerializerOptions(JsonSerializerOptions)` | Set JSON serialization options |
+| `ConfigureJsonSerializerOptions(Action<JsonSerializerOptions>)` | Configure JSON serialization options |
 | `RegisterMessageHandler<T>(string, Action<T>)` | Register one-way message handler |
 | `UnregisterMessageHandler(string)` | Remove message handler |
 | `RegisterRequestHandler<TReq, TRes>(string, Func<TReq, Task<TRes>>)` | Register async request handler |
