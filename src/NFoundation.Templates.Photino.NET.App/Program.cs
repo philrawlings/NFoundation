@@ -86,7 +86,7 @@ namespace NFoundation.Photino.NET.Extensions.Sample
                     }
                 })
 
-                // Register the PhotinoWindow script with console logging enabled
+                // Register the PhotinoWindow script
                 // This allows pages to load the script via <script src="photino://photinoWindow.js"></script>
                 .RegisterPhotinoScript()
 
