@@ -84,9 +84,9 @@ namespace NFoundation.Photino.NET.Extensions.Sample
                     }
                 })
 
-                // Register the PhotinoWindow script scheme handler with debug logging enabled
+                // Register the PhotinoWindow script
                 // This allows pages to load the script via <script src="photino://photinoWindow.js"></script>
-                .RegisterPhotinoScriptScheme()
+                .RegisterPhotinoScript()
 
                 // Load the HTML content
                 .Load("wwwroot/index.html");

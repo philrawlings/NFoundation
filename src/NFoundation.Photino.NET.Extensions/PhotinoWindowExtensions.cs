@@ -426,7 +426,7 @@ namespace NFoundation.Photino.NET.Extensions
         /// <param name="window">The PhotinoWindow instance</param>
         /// <param name="scheme">The custom scheme name (default: "photino")</param>
         /// <param name="enableDebugLogging">Enable debug logging in PhotinoWindow (default: false)</param>
-        public static PhotinoWindow RegisterPhotinoScriptScheme(this PhotinoWindow window, string scheme = "photino", bool enableDebugLogging = false)
+        public static PhotinoWindow RegisterPhotinoScript(this PhotinoWindow window, string scheme = "photino", bool enableDebugLogging = false)
         {
             window.RegisterCustomSchemeHandler(scheme, (object sender, string schemeValue, string url, out string contentType) =>
             {
