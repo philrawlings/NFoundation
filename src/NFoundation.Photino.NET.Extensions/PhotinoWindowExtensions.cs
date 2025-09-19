@@ -223,7 +223,7 @@ namespace NFoundation.Photino.NET.Extensions
 
                 if (envelope.IsResponse)
                 {
-                    // Responses are not expected in this direction (JS to C#)
+                    // Responses are not expected in this direction (JS to .NET)
                     data.Logger?.LogWarning("Unexpected response message received: {RequestId}", envelope.RequestId);
                     return;
                 }
@@ -390,6 +390,57 @@ namespace NFoundation.Photino.NET.Extensions
 
         #endregion
 
+        #region Console Logging Bridge
+
+        /// <summary>
+        /// Represents a console log message from JavaScript
+        /// </summary>
+        private class ConsoleLogMessage
+        {
+            public string Level { get; set; } = string.Empty;
+            public string Message { get; set; } = string.Empty;
+            public string Timestamp { get; set; } = string.Empty;
+        }
+
+        /// <summary>
+        /// Setup console logging bridge for a window
+        /// </summary>
+        private static void SetupConsoleLogging(PhotinoWindow window)
+        {
+            window.RegisterMessageHandler<ConsoleLogMessage>("__console_log", (consoleMessage) =>
+            {
+                var data = _windowData.GetOrCreateValue(window);
+                var logger = data.Logger;
+
+                if (logger == null)
+                    return;
+
+                var message = $"[JS Console] {consoleMessage.Message}";
+
+                switch (consoleMessage.Level.ToLower())
+                {
+                    case "error":
+                        logger.LogError(message);
+                        break;
+                    case "warn":
+                        logger.LogWarning(message);
+                        break;
+                    case "info":
+                        logger.LogInformation(message);
+                        break;
+                    case "debug":
+                        logger.LogTrace(message);
+                        break;
+                    case "log":
+                    default:
+                        logger.LogDebug(message);
+                        break;
+                }
+            });
+        }
+
+        #endregion
+
         #region Script Injection
 
         private static string? _cachedPhotinoScript = null;
@@ -425,8 +476,15 @@ namespace NFoundation.Photino.NET.Extensions
         /// <param name="window">The PhotinoWindow instance</param>
         /// <param name="scheme">The custom scheme name (default: "photino")</param>
         /// <param name="enableDebugLogging">Enable debug logging in PhotinoWindow (default: false)</param>
-        public static PhotinoWindow RegisterPhotinoScript(this PhotinoWindow window, string scheme = "photino", bool enableDebugLogging = false)
+        /// <param name="enableConsoleLogging">Enable console logging bridge to .NET (default: true)</param>
+        public static PhotinoWindow RegisterPhotinoScript(this PhotinoWindow window, string scheme = "photino", bool enableDebugLogging = false, bool enableConsoleLogging = true)
         {
+            // Set up console logging bridge if enabled
+            if (enableConsoleLogging)
+            {
+                SetupConsoleLogging(window);
+            }
+
             window.RegisterCustomSchemeHandler(scheme, (object sender, string schemeValue, string url, out string contentType) =>
             {
                 if (url.ToLower() == $"{scheme}://photinowindow.js")
@@ -435,7 +493,7 @@ namespace NFoundation.Photino.NET.Extensions
                     var script = GetPhotinoWindowScript();
 
                     // Build the initialization options JSON
-                    var initOptions = $"{{ enableDebugLogging: {enableDebugLogging.ToString().ToLower()} }}";
+                    var initOptions = $"{{ enableDebugLogging: {enableDebugLogging.ToString().ToLower()}, enableConsoleLogging: {enableConsoleLogging.ToString().ToLower()} }}";
 
                     // Replace the placeholder with actual options
                     script = script.Replace(

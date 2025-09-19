@@ -109,6 +109,13 @@
     <script src="photino://photinoWindow.js"></script>
 
     <script>
+        // Test console logging bridge
+        console.log('Log test message');
+        //console.warn('Warning test message');
+        //console.error('Error test message');
+        console.info('Info test message');
+        console.debug('Debug test message');
+
         // Utility functions
         function log(message) {
             const logDiv = document.getElementById('log');
@@ -140,6 +147,7 @@
 
         // One-way message functions
         function sendButtonClick(buttonId) {
+            console.info(`Button clicked: ${buttonId}`);
             PhotinoWindow.sendMessage('button-clicked', buttonId);
             log(`🖱️ Sent button click: ${buttonId}`);
         }

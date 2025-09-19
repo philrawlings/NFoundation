@@ -43,7 +43,6 @@ namespace NFoundation.Photino.NET.Extensions.Sample
                     logger.LogInformation("Button clicked: {ButtonId}", buttonId);
                 })
 
-
                 // Register request-response handlers
                 .RegisterRequestHandler<UserDataRequest, UserDataResponse>("get-user", async (request) =>
                 {
@@ -69,9 +68,9 @@ namespace NFoundation.Photino.NET.Extensions.Sample
                     }
                 })
 
-                // Register the PhotinoWindow script
+                // Register the PhotinoWindow script with console logging enabled
                 // This allows pages to load the script via <script src="photino://photinoWindow.js"></script>
-                .RegisterPhotinoScript()
+                .RegisterPhotinoScript(enableDebugLogging: true, enableConsoleLogging: true)
 
                 // Load the HTML content
                 .Load("wwwroot/index.html");

@@ -14,11 +14,14 @@
         _requestIdCounter: 0,
         _initialized: false,
         _enableDebugLogging: false,
+        _enableConsoleLogging: false,
+        _originalConsole: null,
 
         /**
          * Initialize the message handling system
          * @param {Object} options - Configuration options
          * @param {boolean} options.enableDebugLogging - Enable debug logging
+         * @param {boolean} options.enableConsoleLogging - Enable console logging bridge to .NET
          */
         initialize(options = {}) {
             if (this._initialized) {
@@ -27,6 +30,12 @@
             }
 
             this._enableDebugLogging = options.enableDebugLogging || false;
+            this._enableConsoleLogging = options.enableConsoleLogging || false;
+
+            // Set up console logging bridge if enabled
+            if (this._enableConsoleLogging) {
+                this._setupConsoleLogging();
+            }
 
             // Set up the global message receiver
             window.external.receiveMessage((message) => {
@@ -234,8 +243,77 @@
          */
         _log(...args) {
             if (this._enableDebugLogging) {
-                console.log('[PhotinoWindow]', ...args);
+                // Use original console.log to avoid infinite recursion
+                const originalLog = this._originalConsole ? this._originalConsole.log : console.log;
+                originalLog('[PhotinoWindow]', ...args);
             }
+        },
+
+        /**
+         * Set up console logging bridge to .NET
+         * @private
+         */
+        _setupConsoleLogging() {
+            if (this._originalConsole) {
+                return; // Already set up
+            }
+
+            // Store original console methods
+            this._originalConsole = {
+                log: console.log.bind(console),
+                warn: console.warn.bind(console),
+                error: console.error.bind(console),
+                info: console.info.bind(console),
+                debug: console.debug.bind(console)
+            };
+
+            // Create wrapper functions
+            const createConsoleWrapper = (level, originalMethod) => {
+                return (...args) => {
+                    // Call the original method first (preserve normal console behavior)
+                    originalMethod(...args);
+
+                    // Send to .NET if we can
+                    if (this._initialized) {
+                        try {
+                            // Format arguments for transmission
+                            const formattedMessage = args.map(arg => {
+                                if (typeof arg === 'object' && arg !== null) {
+                                    try {
+                                        return JSON.stringify(arg);
+                                    } catch (e) {
+                                        return String(arg);
+                                    }
+                                } else {
+                                    return String(arg);
+                                }
+                            }).join(' ');
+
+                            // Send to .NET
+                            this.sendMessage('__console_log', {
+                                level: level,
+                                message: formattedMessage,
+                                timestamp: new Date().toISOString()
+                            });
+                        } catch (e) {
+                            // If sending to C# fails, don't break console functionality
+                            // Use original error method to avoid recursion
+                            if (this._originalConsole && this._originalConsole.error) {
+                                this._originalConsole.error('Failed to send console message to C#:', e);
+                            }
+                        }
+                    }
+                };
+            };
+
+            // Replace console methods with wrappers
+            console.log = createConsoleWrapper('log', this._originalConsole.log);
+            console.warn = createConsoleWrapper('warn', this._originalConsole.warn);
+            console.error = createConsoleWrapper('error', this._originalConsole.error);
+            console.info = createConsoleWrapper('info', this._originalConsole.info);
+            console.debug = createConsoleWrapper('debug', this._originalConsole.debug);
+
+            this._log('Console logging bridge enabled');
         },
 
         /**
