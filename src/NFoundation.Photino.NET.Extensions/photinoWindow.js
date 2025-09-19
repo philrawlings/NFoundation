@@ -345,4 +345,10 @@
     const initOptions = /* PHOTINO_INIT_OPTIONS_PLACEHOLDER */{}/* PHOTINO_INIT_OPTIONS_END */;
     PhotinoWindow.initialize(initOptions);
 
+    // Register hot reload handler
+    PhotinoWindow.onMessage('__hot_reload', () => {
+        console.log('Hot reload triggered - reloading page');
+        window.location.reload();
+    });
+
 })(window);
