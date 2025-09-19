@@ -12,6 +12,7 @@ NFoundation.Photino.NET.Extensions enhances the Photino.NET framework with a com
 - 📡 **Request-Response Patterns** - Async request handling with automatic response routing
 - 📜 **Automatic Script Injection** - Embedded JavaScript library with auto-initialization
 - 🪵 **Console Logging Bridge** - Forward JavaScript console messages to .NET ILogger
+- 🔥 **Hot Reload for Development** - Automatic page refresh when source files change (DEBUG builds only)
 - 🔍 **Enhanced Photino Logging** - Routes Photino log messages to ILogger instance, rather than the Console (not supported for AOT compiled apps)
 
 ## Disclaimer
@@ -77,8 +78,8 @@ var window = new PhotinoWindow()
     // Enable automatic script injection with console logging
     .RegisterPhotinoScript(enablePhotinoDebugLogging: true, forwardConsoleMessagesToLogger: true)
 
-    // Load your HTML
-    .Load("wwwroot/index.html");
+    // Load your HTML with hot reload support (automatically enabled in DEBUG builds)
+    .Load("wwwroot", "index.html");
 
 window.WaitForClose();
 ```
@@ -290,6 +291,116 @@ console.log('User data:', { id: 1, name: 'John' });
 [12:34:56] DEBUG [JS Console] User data: {"id":1,"name":"John"}
 ```
 
+### Hot Reload for Development
+
+The library provides automatic hot reload functionality that monitors your web files for changes and refreshes the application automatically during development.
+
+#### Basic Usage
+
+```csharp
+var window = new PhotinoWindow()
+    .SetLogger(logger)
+    .SetTitle("My App")
+
+    // Load with hot reload support - automatically enabled in DEBUG builds
+    .Load("wwwroot", "index.html");
+
+window.WaitForClose();
+```
+
+#### How It Works
+
+- **Automatic Detection**: Hot reload is enabled automatically in DEBUG builds and disabled in RELEASE builds
+- **Path Resolution**: Always loads from source directory (not bin/output) to ensure hot reload works properly
+- **Multi-Window Support**: Multiple windows can watch the same directory efficiently using shared file watchers
+- **URL Support**: Also works with development servers while still monitoring local files
+
+#### Supported Scenarios
+
+**Local Files:**
+```csharp
+// Watch wwwroot directory, load index.html from source
+.Load("wwwroot", "index.html")
+
+// Watch Resources/wwwroot, load admin.html
+.Load("Resources/wwwroot", "admin.html")
+```
+
+**Development Servers:**
+```csharp
+// Watch wwwroot for file changes, but load from development server
+.Load("wwwroot", "http://localhost:3000")
+
+// Watch Resources/wwwroot, load from HTTPS development server
+.Load("Resources/wwwroot", "https://localhost:5001")
+```
+
+#### Advanced Configuration
+
+```csharp
+// Custom hot reload configuration
+.Load("wwwroot", "index.html", options =>
+{
+    options.DebounceDelay = 500;                    // Wait 500ms after changes stop
+    options.FileFilter = "*.html,*.css,*.js";      // Only watch specific file types
+    options.IncludeSubdirectories = true;           // Monitor subdirectories (default)
+    options.EnableOnlyInDebug = false;              // Force enable in RELEASE builds
+})
+```
+
+#### Path Resolution Logic
+
+The hot reload system intelligently finds your source files:
+
+1. **Project Root Detection**: Searches up the directory tree for `.csproj` files
+2. **Source Priority**: Always prefers source directories over bin/output copies
+3. **Embedded Resources**: Supports `Resources/wwwroot` pattern for embedded resource projects
+4. **Fallback Handling**: Gracefully falls back to regular loading if source detection fails
+
+#### Multi-Window Efficiency
+
+When multiple windows watch the same directory:
+
+```csharp
+// Both windows share a single file watcher for "wwwroot"
+var window1 = new PhotinoWindow().Load("wwwroot", "index.html");
+var window2 = new PhotinoWindow().Load("wwwroot", "admin.html");
+
+// Automatic cleanup when windows are disposed
+window1.Dispose(); // Watcher continues for window2
+window2.Dispose(); // Watcher is automatically disposed
+```
+
+#### Debugging Hot Reload
+
+Enable debug logging to troubleshoot hot reload issues:
+
+```csharp
+var window = new PhotinoWindow()
+    .SetLogger(logger) // Hot reload uses this logger for debug output
+    .Load("wwwroot", "index.html");
+```
+
+**Debug Output:**
+```
+[12:34:56] DEBUG Hot reload monitoring source path: C:\MyProject\wwwroot
+[12:34:57] INFO  Hot reload triggered for path: C:\MyProject\wwwroot
+[12:34:57] DEBUG Sent hot reload message to window
+```
+
+#### JavaScript Integration
+
+The hot reload system works seamlessly with the included JavaScript library. When files change, a `__hot_reload` message is sent to all affected windows, triggering a page refresh:
+
+```javascript
+// This happens automatically - no JavaScript code needed
+// But you can listen for the reload event if desired
+PhotinoWindow.onMessage('__hot_reload', () => {
+    console.log('Hot reload triggered - page will refresh');
+    // Custom cleanup logic before reload if needed
+});
+```
+
 ## Advanced Features
 
 ### Enhanced Photino Logging
@@ -356,6 +467,8 @@ internal partial class MyJsonContext : JsonSerializerContext
 | `RegisterRequestHandler<TReq, TRes>(string, Func<TReq, Task<TRes>>)` | Register async request handler |
 | `UnregisterRequestHandler(string)` | Remove request handler |
 | `SendMessage<T>(string, T)` | Send one-way message to JavaScript |
+| `Load(string, string)` | Load content with automatic hot reload support (watchPath, htmlPath) |
+| `Load(string, string, Action<HotReloadOptions>?)` | Load content with configurable hot reload options |
 | `RegisterPhotinoScript(string, bool, bool)` | Enable script injection with options (scheme, enablePhotinoDebugLogging, forwardConsoleMessagesToLogger) |
 | `ClearHandlers()` | Remove all registered handlers |
 
