@@ -326,9 +326,9 @@
         },
 
         /**
-         * Get statistics about registered handlers
+         * Get status
          */
-        getStats() {
+        getStatus() {
             return {
                 messageHandlers: this._messageHandlers.size,
                 pendingRequests: this._pendingRequests.size,
@@ -336,9 +336,6 @@
             };
         }
     };
-
-    // Helper function for common patterns
-    PhotinoWindow.helpers = {};
 
     // Expose PhotinoWindow globally
     window.PhotinoWindow = PhotinoWindow;

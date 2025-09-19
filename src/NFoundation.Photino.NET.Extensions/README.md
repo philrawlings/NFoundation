@@ -10,11 +10,9 @@ NFoundation.Photino.NET.Extensions enhances the Photino.NET framework with a com
 
 - 🚀 **Typed Messaging System** - Type-safe communication between .NET and JavaScript
 - 📡 **Request-Response Patterns** - Async request handling with automatic response routing
-- 🔧 **Fluent API** - Chain extension methods for clean, readable window configuration
 - 📜 **Automatic Script Injection** - Embedded JavaScript library with auto-initialization
 - 🪵 **Console Logging Bridge** - Forward JavaScript console messages to .NET ILogger
-- 💾 **Memory Efficient** - Uses ConditionalWeakTable for optimal memory management
-- 🔍 **Enhanced Photino Logging** - Unified logging with Harmony patches
+- 🔍 **Enhanced Photino Logging** - Routes Photino log messages to ILogger instance, rather than the Console
 
 ## Disclaimer
 
@@ -229,18 +227,19 @@ Once loaded, the `PhotinoWindow` object provides a clean API:
 
 ```javascript
 // Check initialization status
-console.log('Initialized:', PhotinoWindow.getStats().initialized);
+const stats = PhotinoWindow.getStatus()
+console.log(`Initialized ${stats.initialized}, Handler Count: {stats.messageHandlers}, Pending Requests: {stats.pendingRequests}`);
 
-// Send messages
+// Send message
 PhotinoWindow.sendMessage(type, payload);
 
-// Send requests with optional timeout
+// Send request with optional timeout
 PhotinoWindow.sendRequest(type, payload, timeout = 30000);
 
-// Register message handlers (from .NET to JS - not commonly used)
+// Register message handler (from .NET to JS)
 PhotinoWindow.onMessage(type, handler);
 
-// Remove handlers
+// Remove message handler
 PhotinoWindow.offMessage(type);
 
 // Clear all handlers
@@ -386,5 +385,8 @@ The example demonstrates:
 
 This library is licensed under the [Apache License 2.0](LICENSE).
 
-It depends on [Photino.NET](https://github.com/tryphotino/photino.NET), which is also licensed under Apache License 2.0.  
+It depends on:
+- [Photino.NET](https://github.com/tryphotino/photino.NET), which is also licensed under Apache License 2.0.
+- [Harmony](https://github.com/pardeike/Harmony), which is also licensed under MIT License.  
+
 See the [NOTICE](NOTICE) file for details.
