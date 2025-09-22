@@ -18,12 +18,6 @@ builder.Services.AddSerilog((services, configuration) => configuration
     .ReadFrom.Services(services)
 );
 
-// Configure logging
-builder.Logging.ClearProviders();
-builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
-builder.Logging.AddConsole();
-builder.Logging.AddDebug();
-
 // Configure and add services
 
 // Build the host

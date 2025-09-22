@@ -345,9 +345,9 @@
     const initOptions = /* PHOTINO_INIT_OPTIONS_PLACEHOLDER */{}/* PHOTINO_INIT_OPTIONS_END */;
     PhotinoWindow.initialize(initOptions);
 
-    // Register hot reload handler
-    PhotinoWindow.onMessage('__hot_reload', () => {
-        console.log('Hot reload triggered - reloading page');
+    // Register reload handler (for both manual reload and hot reload)
+    PhotinoWindow.onMessage('__reload', () => {
+        console.log('Page reload triggered');
         window.location.reload();
     });
 

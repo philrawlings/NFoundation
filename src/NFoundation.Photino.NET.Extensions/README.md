@@ -390,15 +390,24 @@ var window = new PhotinoWindow()
 
 #### JavaScript Integration
 
-The hot reload system works seamlessly with the included JavaScript library. When files change, a `__hot_reload` message is sent to all affected windows, triggering a page refresh:
+The hot reload system works seamlessly with the included JavaScript library. When files change, a `__reload` message is sent to all affected windows, triggering a page refresh:
 
 ```javascript
 // This happens automatically - no JavaScript code needed
 // But you can listen for the reload event if desired
-PhotinoWindow.onMessage('__hot_reload', () => {
-    console.log('Hot reload triggered - page will refresh');
+PhotinoWindow.onMessage('__reload', () => {
+    console.log('Page reload triggered');
     // Custom cleanup logic before reload if needed
 });
+```
+
+#### Manual Reload
+
+You can also trigger a reload manually from .NET:
+
+```csharp
+// Trigger a reload of the current page
+window.Reload();
 ```
 
 ## Advanced Features
@@ -467,6 +476,7 @@ internal partial class MyJsonContext : JsonSerializerContext
 | `RegisterRequestHandler<TReq, TRes>(string, Func<TReq, Task<TRes>>)` | Register async request handler |
 | `UnregisterRequestHandler(string)` | Remove request handler |
 | `SendMessage<T>(string, T)` | Send one-way message to JavaScript |
+| `Reload()` | Trigger a page reload in the browser window |
 | `Load(string, string)` | Load content with automatic hot reload support (watchPath, htmlPath) |
 | `Load(string, string, Action<HotReloadOptions>?)` | Load content with configurable hot reload options |
 | `RegisterPhotinoScript(string, bool, bool)` | Enable script injection with options (scheme, enablePhotinoDebugLogging, forwardConsoleMessagesToLogger) |

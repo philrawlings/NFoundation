@@ -5,7 +5,6 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using NFoundation.Json;
 using System.Reflection;
-using System.Diagnostics.CodeAnalysis;
 using System.Collections.Concurrent;
 
 namespace NFoundation.Photino.NET.Extensions
@@ -106,12 +105,11 @@ namespace NFoundation.Photino.NET.Extensions
                 {
                     try
                     {
-                        window.SendMessage<object?>("__hot_reload", null);
-                        Logger?.LogDebug("Sent hot reload message to window");
+                        window.Reload();
                     }
                     catch (Exception ex)
                     {
-                        Logger?.LogWarning(ex, "Failed to send hot reload message to window");
+                        Logger?.LogWarning(ex, "Failed to reload window");
                     }
                 }
             }
@@ -323,6 +321,17 @@ namespace NFoundation.Photino.NET.Extensions
             data.Logger?.LogDebug("Sent message of type: {Type}", type);
         }
 
+        /// <summary>
+        /// Triggers a page reload in the browser window
+        /// </summary>
+        /// <param name="window">The PhotinoWindow instance</param>
+        public static void Reload(this PhotinoWindow window)
+        {
+            window.SendMessage<object?>("__reload", null);
+
+            var data = _windowData.GetOrCreateValue(window);
+            data.Logger?.LogInformation("Triggered manual reload");
+        }
 
         #endregion
 
