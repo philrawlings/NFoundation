@@ -465,6 +465,236 @@ internal partial class MyJsonContext : JsonSerializerContext
 }
 ```
 
+## Photino Window with Dependency Injection
+
+The library provides a robust integration with Microsoft's dependency injection container and hosting infrastructure through the `Window` base class and service collection extensions.
+
+### Window Base Class
+
+Create custom window classes by inheriting from `Window` and implementing the `Configure` method:
+
+```csharp
+using Microsoft.Extensions.Logging;
+using Photino.NET;
+using NFoundation.Photino.NET.Extensions;
+
+public class MainWindow : Window
+{
+    private readonly IMyService _myService;
+
+    public MainWindow(ILogger<MainWindow> logger, IMyService myService)
+        : base(logger)
+    {
+        _myService = myService;
+    }
+
+    protected override void Configure(PhotinoWindow window)
+    {
+        window
+            .SetTitle("My Application")
+            .SetSize(new Size(1200, 800))
+            .Center()
+
+            // Register handlers using injected services
+            .RegisterRequestHandler<DataRequest, DataResponse>("get-data", async (request) =>
+            {
+                return await _myService.GetDataAsync(request);
+            })
+
+            // Load with hot reload support
+            .Load("wwwroot", "index.html");
+    }
+}
+```
+
+### Service Registration
+
+The library provides two extension methods for registering windows with the DI container:
+
+#### AddHostedWindow - Integrated with Host Lifetime
+
+Use `AddHostedWindow` to register a window that integrates with the application host lifetime. The window will:
+- Open automatically when the host starts
+- Stop the application when the window is closed
+- Close automatically when the application stops
+
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+var builder = Host.CreateApplicationBuilder(args);
+
+// Register services
+builder.Services.AddSingleton<IMyService, MyService>();
+
+// Register window as hosted service
+builder.Services.AddHostedWindow<MainWindow>();
+
+var host = builder.Build();
+await host.RunAsync();
+```
+
+#### AddWindow - Manual Control
+
+Use `AddWindow` to register a window for manual control. This is useful when you need to:
+- Open windows on demand
+- Manage multiple windows independently
+- Control window lifecycle programmatically
+
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+var builder = Host.CreateApplicationBuilder(args);
+
+// Register services
+builder.Services.AddSingleton<IMyService, MyService>();
+
+// Register windows for manual control
+builder.Services.AddWindow<MainWindow>();
+builder.Services.AddWindow<SettingsWindow>();
+
+var host = builder.Build();
+
+// Manually open windows
+var mainWindow = host.Services.GetRequiredService<MainWindow>();
+mainWindow.Open();
+
+// Open settings window when needed
+void OpenSettings()
+{
+    var settingsWindow = host.Services.GetRequiredService<SettingsWindow>();
+    settingsWindow.Open(parent: mainWindow);
+}
+
+await host.RunAsync();
+```
+
+### Complete Example with DI
+
+Here's a complete example showing dependency injection integration:
+
+```csharp
+// Program.cs
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using NFoundation.Photino.NET.Extensions;
+
+var builder = Host.CreateApplicationBuilder(args);
+
+// Configure logging
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+
+// Register application services
+builder.Services.AddSingleton<IDataService, DataService>();
+builder.Services.AddSingleton<ISettingsService, SettingsService>();
+
+// Register main window as hosted service
+builder.Services.AddHostedWindow<MainWindow>();
+
+// Register additional windows for manual control
+builder.Services.AddWindow<SettingsWindow>();
+builder.Services.AddWindow<AboutWindow>();
+
+var host = builder.Build();
+await host.RunAsync();
+
+// MainWindow.cs
+public class MainWindow : Window
+{
+    private readonly IDataService _dataService;
+    private readonly IServiceProvider _serviceProvider;
+
+    public MainWindow(
+        ILogger<MainWindow> logger,
+        IDataService dataService,
+        IServiceProvider serviceProvider)
+        : base(logger)
+    {
+        _dataService = dataService;
+        _serviceProvider = serviceProvider;
+    }
+
+    protected override void Configure(PhotinoWindow window)
+    {
+        window
+            .SetTitle("My Application")
+            .SetSize(new Size(1200, 800))
+            .Center()
+            .SetDevToolsEnabled(true)
+
+            // Handle data requests
+            .RegisterRequestHandler<GetDataRequest, DataResponse>("get-data",
+                async (request) => await _dataService.GetDataAsync(request))
+
+            // Handle window management
+            .RegisterMessageHandler<string>("open-settings", (message) =>
+            {
+                var settingsWindow = _serviceProvider.GetRequiredService<SettingsWindow>();
+                settingsWindow.Open(parent: this);
+            })
+
+            // Enable script injection and hot reload
+            .RegisterPhotinoScript()
+            .Load("wwwroot", "index.html");
+    }
+}
+
+// SettingsWindow.cs
+public class SettingsWindow : Window
+{
+    private readonly ISettingsService _settingsService;
+
+    public SettingsWindow(
+        ILogger<SettingsWindow> logger,
+        ISettingsService settingsService)
+        : base(logger)
+    {
+        _settingsService = settingsService;
+    }
+
+    protected override void Configure(PhotinoWindow window)
+    {
+        window
+            .SetTitle("Settings")
+            .SetSize(new Size(600, 400))
+            .Center()
+
+            .RegisterRequestHandler<GetSettingsRequest, SettingsResponse>("get-settings",
+                async (request) => await _settingsService.GetSettingsAsync())
+
+            .RegisterRequestHandler<SaveSettingsRequest, bool>("save-settings",
+                async (request) => await _settingsService.SaveSettingsAsync(request))
+
+            .RegisterPhotinoScript()
+            .Load("wwwroot", "settings.html");
+    }
+}
+```
+
+### Key Benefits
+
+- **Full DI Support**: Windows can have constructor dependencies injected
+- **Lifetime Management**: Automatic integration with IHostApplicationLifetime
+- **Thread Safety**: Windows run on proper STA threads (Windows) automatically
+- **Resource Cleanup**: Implements IDisposable for proper resource management
+- **Service Scoping**: Access to IServiceProvider for resolving additional services
+- **Multiple Windows**: Support for parent-child window relationships
+
+### Window Lifecycle
+
+The `Window` base class provides these lifecycle features:
+
+- **Open()**: Opens the window on a dedicated thread
+- **Close()**: Explicitly closes the window
+- **Reload()**: Triggers a page reload
+- **WaitForCloseAsync()**: Asynchronously waits for window closure
+- **Dispose()**: Proper cleanup of resources
+
+Windows can only be opened once. Attempting to open an already-opened window will throw an `InvalidOperationException`.
+
 ## API Reference
 
 ### Extension Methods
