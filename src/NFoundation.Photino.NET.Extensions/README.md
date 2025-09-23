@@ -556,10 +556,6 @@ builder.Services.AddWindow<SettingsWindow>();
 
 var host = builder.Build();
 
-// Manually open windows
-var mainWindow = host.Services.GetRequiredService<MainWindow>();
-mainWindow.Open();
-
 // Open settings window when needed
 void OpenSettings()
 {
@@ -567,7 +563,8 @@ void OpenSettings()
     settingsWindow.Open(parent: mainWindow);
 }
 
-await host.RunAsync();
+// Runs hosted services and hosted windows
+await host.RunAsync(); // App closes when MainWindow closes
 ```
 
 ### Complete Example with DI
@@ -636,8 +633,6 @@ public class MainWindow : Window
                 settingsWindow.Open(parent: this);
             })
 
-            // Enable script injection and hot reload
-            .RegisterPhotinoScript()
             .Load("wwwroot", "index.html");
     }
 }
@@ -668,7 +663,6 @@ public class SettingsWindow : Window
             .RegisterRequestHandler<SaveSettingsRequest, bool>("save-settings",
                 async (request) => await _settingsService.SaveSettingsAsync(request))
 
-            .RegisterPhotinoScript()
             .Load("wwwroot", "settings.html");
     }
 }
