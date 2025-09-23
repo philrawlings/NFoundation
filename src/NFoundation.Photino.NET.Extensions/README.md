@@ -310,6 +310,7 @@ window.WaitForClose();
 - **Path Resolution**: Always loads from source directory (not bin/output) to ensure hot reload works properly
 - **Multi-Window Support**: Multiple windows can watch the same directory efficiently using shared file watchers
 - **URL Support**: Also works with development servers while still monitoring local files
+- **Automatic Cleanup**: File watchers are reference-counted and automatically disposed when the last window using them is closed or garbage collected
 
 #### Supported Scenarios
 
@@ -362,9 +363,11 @@ When multiple windows watch the same directory:
 var window1 = new PhotinoWindow().Load("wwwroot", "index.html");
 var window2 = new PhotinoWindow().Load("wwwroot", "admin.html");
 
-// Automatic cleanup when windows are disposed
-window1.Dispose(); // Watcher continues for window2
-window2.Dispose(); // Watcher is automatically disposed
+// Automatic cleanup when windows are closed
+window1.Close(); // Watcher continues for window2
+window2.Close(); // Watcher is automatically disposed when last window closes
+// Note: Hot reload watchers are also cleaned up automatically when windows
+// are garbage collected, even without explicit Close() calls
 ```
 
 #### Debugging Hot Reload
@@ -426,9 +429,12 @@ var window = new PhotinoWindow()
 
 The library uses `ConditionalWeakTable<PhotinoWindow, PhotinoWindowData>` for storing window-specific data, ensuring that:
 
-- Window data is automatically garbage collected when windows are disposed
+- Window data is automatically garbage collected when windows go out of scope
 - No memory leaks from long-running applications
 - Thread-safe access to window-specific configuration
+- Hot reload watchers are automatically cleaned up when their associated windows are collected
+
+**Note:** The base `PhotinoWindow` class does not implement `IDisposable`. The library handles cleanup automatically through weak references and finalizers. Use the `Close()` method to explicitly close a window, or let the garbage collector handle cleanup when windows go out of scope. The custom `Window` wrapper class (used with dependency injection) does implement `IDisposable` for additional control.
 
 ### JSON Serialization Configuration
 
