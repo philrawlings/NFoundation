@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -5,18 +6,18 @@ namespace NFoundation.Photino.NET.Extensions
 {
     public class WindowHostedService<TWindow> : IHostedService where TWindow : Window
     {
-        private readonly IWindowManager _windowManager;
+        private readonly IServiceProvider _serviceProvider;
         private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly ILogger<WindowHostedService<TWindow>> _logger;
         private Window? _window;
         private Task? _windowTask;
 
         public WindowHostedService(
-            IWindowManager windowManager,
+            IServiceProvider serviceProvider,
             IHostApplicationLifetime applicationLifetime,
             ILogger<WindowHostedService<TWindow>> logger)
         {
-            _windowManager = windowManager;
+            _serviceProvider = serviceProvider;
             _applicationLifetime = applicationLifetime;
             _logger = logger;
         }
@@ -25,7 +26,7 @@ namespace NFoundation.Photino.NET.Extensions
         {
             _logger.LogInformation("Starting hosted window service for {WindowType}", typeof(TWindow).Name);
 
-            _window = _windowManager.GetWindow<TWindow>();
+            _window = _serviceProvider.GetRequiredService<TWindow>();
             _window.Open();
 
             // Start monitoring the window closure asynchronously

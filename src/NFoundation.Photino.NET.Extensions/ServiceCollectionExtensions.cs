@@ -4,10 +4,17 @@ namespace NFoundation.Photino.NET.Extensions
 {
     public static class ServiceCollectionExtensions
     {
-        public static WindowManagerBuilder AddWindowManager(this IServiceCollection services)
+        public static IServiceCollection AddWindow<TWindow>(this IServiceCollection services) where TWindow : Window
         {
-            services.AddSingleton<IWindowManager, WindowManager>();
-            return new WindowManagerBuilder(services);
+            services.AddSingleton<TWindow>();
+            return services;
+        }
+
+        public static IServiceCollection AddHostedWindow<TWindow>(this IServiceCollection services) where TWindow : Window
+        {
+            services.AddSingleton<TWindow>();
+            services.AddHostedService<WindowHostedService<TWindow>>();
+            return services;
         }
     }
 }

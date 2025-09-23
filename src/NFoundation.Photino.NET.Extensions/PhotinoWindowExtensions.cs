@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using NFoundation.Json;
 using System.Reflection;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace NFoundation.Photino.NET.Extensions
 {
@@ -847,8 +848,7 @@ namespace NFoundation.Photino.NET.Extensions
             configureOptions?.Invoke(options);
 
             // Check if hot reload should be enabled
-#if !DEBUG
-            if (options.EnableOnlyInDebug)
+            if (!Debugger.IsAttached && options.EnableOnlyInDebug)
             {
                 logger?.LogDebug("Hot reload disabled in release build");
                 if (IsUrl(htmlPath))
@@ -857,7 +857,6 @@ namespace NFoundation.Photino.NET.Extensions
                     window.Load(watchPath + "/" + htmlPath);
                 return window;
             }
-#endif
 
             try
             {
@@ -981,6 +980,7 @@ namespace NFoundation.Photino.NET.Extensions
                             info.SendReloadToAllWindows();
                         }
                     },
+                    fileFilter: options.FileFilter,
                     debounceDelay: options.DebounceDelay,
                     logger: logger
                 );

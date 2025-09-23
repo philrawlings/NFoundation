@@ -1,6 +1,6 @@
 # NFoundation.Photino.NET.Extensions
 
-**A powerful extension library for Photino.NET that adds typed messaging, automatic script injection, and enhanced logging capabilities.**
+**An extension library for Photino.NET that adds typed messaging, automatic script injection, and enhanced logging capabilities.**
 
 ## Overview
 
@@ -75,8 +75,8 @@ var window = new PhotinoWindow()
         return new UserResponse { Name = "John Doe" };
     })
 
-    // Enable automatic script injection with console logging
-    .RegisterPhotinoScript(enablePhotinoDebugLogging: true, forwardConsoleMessagesToLogger: true)
+    // Enable automatic script injection with console log messages bridged to host
+    .RegisterPhotinoScript()
 
     // Load your HTML with hot reload support (automatically enabled in DEBUG builds)
     .Load("wwwroot", "index.html");
@@ -231,9 +231,9 @@ window.RegisterPhotinoScript(
 Once loaded, the `PhotinoWindow` object provides a clean API:
 
 ```javascript
-// Check initialization status
-const stats = PhotinoWindow.getStatus()
-console.log(`Initialized ${stats.initialized}, Handler Count: {stats.messageHandlers}, Pending Requests: {stats.pendingRequests}`);
+// Check status
+const status = PhotinoWindow.getStatus()
+console.log(`Initialized ${status.initialized}, Handler Count: ${status.messageHandlers}, Pending Requests: ${status.pendingRequests}`);
 
 // Send message
 PhotinoWindow.sendMessage(type, payload);
@@ -249,10 +249,6 @@ PhotinoWindow.offMessage(type);
 
 // Clear all handlers
 PhotinoWindow.clearHandlers();
-
-// Get statistics
-const stats = PhotinoWindow.getStats();
-console.log(`Handlers: ${stats.messageHandlers}, Pending: ${stats.pendingRequests}`);
 ```
 
 ### Console Logging Bridge
@@ -262,7 +258,7 @@ Forward JavaScript console output to your .NET logger for unified logging.
 #### Setup
 
 ```csharp
-// Enable console logging bridge (enabled by default)
+// Enable console logging bridge (enabled by default, therefore forwardConsoleMessagesToLogger can be omitted if preferred)
 window.RegisterPhotinoScript(forwardConsoleMessagesToLogger: true);
 ```
 

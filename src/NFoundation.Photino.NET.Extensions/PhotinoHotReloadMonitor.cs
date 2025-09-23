@@ -76,13 +76,14 @@ namespace NFoundation.Photino.NET.Extensions
         public static PhotinoHotReloadMonitor Create(
             string pathToWatch,
             Action onChanged,
+            string fileFilter,
             int debounceDelay = 200,
             ILogger? logger = null)
         {
             return new PhotinoHotReloadMonitor(
                 pathToWatch,
                 onChanged,
-                "*.*",
+                fileFilter,
                 true,
                 debounceDelay,
                 logger);
