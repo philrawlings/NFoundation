@@ -347,7 +347,7 @@
 
     // Register reload handler (for both manual reload and hot reload)
     PhotinoWindow.onMessage('__reload', () => {
-        console.log('Page reload triggered');
+        console.info('Page reload triggered');
         window.location.reload();
     });
 

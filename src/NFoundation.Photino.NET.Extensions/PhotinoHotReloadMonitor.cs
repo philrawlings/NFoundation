@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
 using Microsoft.Extensions.Logging;
 
 namespace NFoundation.Photino.NET.Extensions
@@ -54,7 +49,7 @@ namespace NFoundation.Photino.NET.Extensions
                 throw new DirectoryNotFoundException($"Directory not found: {resolvedPath}");
             }
 
-            _logger?.LogInformation("Starting file watcher for: {Path}", resolvedPath);
+            _logger?.LogDebug("Starting file watcher for: {Path}", resolvedPath);
 
             _watcher = new FileSystemWatcher(resolvedPath)
             {
@@ -118,7 +113,7 @@ namespace NFoundation.Photino.NET.Extensions
                     var projectPath = Path.Combine(searchDir, pathToWatch);
                     if (Directory.Exists(projectPath))
                     {
-                        _logger?.LogInformation("Hot reload monitoring source path: {Path}", projectPath);
+                        _logger?.LogDebug("Hot reload monitoring source path: {Path}", projectPath);
                         return projectPath;
                     }
 
@@ -126,7 +121,7 @@ namespace NFoundation.Photino.NET.Extensions
                     var resourcesPath = Path.Combine(searchDir, "Resources", pathToWatch);
                     if (Directory.Exists(resourcesPath))
                     {
-                        _logger?.LogInformation("Hot reload monitoring embedded resources path: {Path}", resourcesPath);
+                        _logger?.LogDebug("Hot reload monitoring embedded resources path: {Path}", resourcesPath);
                         return resourcesPath;
                     }
                 }
@@ -182,7 +177,7 @@ namespace NFoundation.Photino.NET.Extensions
                 {
                     try
                     {
-                        _logger?.LogInformation("Triggering reload due to file changes");
+                        _logger?.LogDebug("Triggering reload due to file changes");
                         _onChanged.Invoke();
                     }
                     catch (Exception ex)
@@ -258,7 +253,7 @@ namespace NFoundation.Photino.NET.Extensions
                 _disposed = true;
                 _debounceTimer?.Dispose();
                 _watcher?.Dispose();
-                _logger?.LogInformation("File watcher disposed");
+                _logger?.LogDebug("File watcher disposed");
             }
         }
     }

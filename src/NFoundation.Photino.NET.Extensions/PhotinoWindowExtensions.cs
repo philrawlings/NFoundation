@@ -232,7 +232,7 @@ namespace NFoundation.Photino.NET.Extensions
                 data.Logger?.LogDebug("Registered base web message handler for window");
             }
 
-            data.Logger?.LogInformation("Registered message handler for type: {Type}", type);
+            data.Logger?.LogDebug("Registered message handler for type: {Type}", type);
             return window;
         }
 
@@ -244,7 +244,7 @@ namespace NFoundation.Photino.NET.Extensions
                 {
                     if (data.MessageHandlers.Remove(type))
                     {
-                        data.Logger?.LogInformation("Unregistered message handler for type: {Type}", type);
+                        data.Logger?.LogDebug("Unregistered message handler for type: {Type}", type);
                     }
                 }
             }
@@ -281,7 +281,7 @@ namespace NFoundation.Photino.NET.Extensions
                 data.Logger?.LogDebug("Registered base web message handler for window");
             }
 
-            data.Logger?.LogInformation("Registered request handler for type: {Type}", type);
+            data.Logger?.LogDebug("Registered request handler for type: {Type}", type);
             return window;
         }
 
@@ -293,7 +293,7 @@ namespace NFoundation.Photino.NET.Extensions
                 {
                     if (data.RequestHandlers.Remove(type))
                     {
-                        data.Logger?.LogInformation("Unregistered request handler for type: {Type}", type);
+                        data.Logger?.LogDebug("Unregistered request handler for type: {Type}", type);
                     }
                 }
             }
@@ -330,7 +330,7 @@ namespace NFoundation.Photino.NET.Extensions
             window.SendMessage<object?>("__reload", null);
 
             var data = _windowData.GetOrCreateValue(window);
-            data.Logger?.LogInformation("Triggered manual reload");
+            data.Logger?.LogDebug("Triggered manual reload");
         }
 
         #endregion
@@ -791,7 +791,7 @@ namespace NFoundation.Photino.NET.Extensions
             });
 
             var data = _windowData.GetOrCreateValue(window);
-            data.Logger?.LogInformation("Registered PhotinoWindow script scheme handler for scheme: {Scheme}", scheme);
+            data.Logger?.LogDebug("Registered PhotinoWindow script scheme handler for scheme: {Scheme}", scheme);
 
             return window;
         }
@@ -977,7 +977,7 @@ namespace NFoundation.Photino.NET.Extensions
                         // When files change, reload all subscribed windows
                         if (_globalWatchers.TryGetValue(path, out var info))
                         {
-                            logger?.LogInformation("Hot reload triggered for path: {Path}", path);
+                            logger?.LogDebug("Hot reload triggered for path: {Path}", path);
                             info.SendReloadToAllWindows();
                         }
                     },
@@ -1026,7 +1026,7 @@ namespace NFoundation.Photino.NET.Extensions
 
                 data.MessageHandlers.Clear();
                 data.RequestHandlers.Clear();
-                data.Logger?.LogInformation("Cleared all handlers for window");
+                data.Logger?.LogDebug("Cleared all handlers for window");
 
                 // The entry will be removed automatically when the window is garbage collected.
                 _windowData.Remove(window);
