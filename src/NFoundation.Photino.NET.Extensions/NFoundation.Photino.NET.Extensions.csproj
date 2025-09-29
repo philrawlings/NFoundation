@@ -22,7 +22,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
     <PackageReference Include="NFoundation.Json" Version="1.0.0" />
-    <PackageReference Include="Photino.NET" Version="3.2.3" />
+    <PackageReference Include="Photino.NET" Version="4.0.16" />
   </ItemGroup>
 
   <ItemGroup>
