@@ -88,12 +88,7 @@ namespace NFoundation.Photino.NET.Extensions
             if (logger != null)
             {
                 // Use ILogger for this window
-                if (message.Contains("error", StringComparison.OrdinalIgnoreCase))
-                    logger.LogError("Photino {WindowTitle}{Message}", title, message);
-                else if (message.Contains("warn", StringComparison.OrdinalIgnoreCase))
-                    logger.LogWarning("Photino {WindowTitle}{Message}", title, message);
-                else
-                    logger.LogDebug("Photino {WindowTitle}{Message}", title, message);
+                logger.LogDebug("Photino {WindowTitle}{Message}", title, message);
             }
             else
             {
